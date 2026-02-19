@@ -1,0 +1,95 @@
+{
+  "deliveroo": {
+    "name": "Deliveroo",
+    "url": "https://deliveroo.co.uk/menu/Cheltenham/marle-hill/5205-one-stop-cheltenham-hilltop/?day=today&geohash=gcnrze4nc3md&time=ASAP&fulfillment_method=DELIVERY&timestamp=1768735649&category_id=937813674&linked_request_uuid=e526d84a-6ae5-4667-b6e5-fc83656014ad",
+    "requires_postcode": false,
+    "postcode": "GL52 3DT",
+    "postcode_selectors": {
+      "input": "input[placeholder*='postcode'], input[placeholder*='address'], input[type='text'], input[id*='location'], input[id*='search'], input[name*='postcode']",
+      "submit": "button[type='submit'], button:has-text('Find'), button:has-text('Search'), .search-button, [class*='submit']"
+    },
+    "scroll_passes": 890,
+    "extraction": {
+      "name": {
+        "xpath": "ancestor::li[1]//div[1]//p",
+        "filters": [
+          "no_price",
+          "no_calories",
+          "min_length:3"
+        ]
+      },
+      "image": {
+        "xpath": "ancestor::li[1]//div[@role='img']",
+        "attribute": "style",
+        "pattern": "url\\([\"']?([^\"'()]+)[\"']?\\)",
+        "trim_after": [
+          ".jpg",
+          ".jpeg"
+        ]
+      }
+    }
+  },
+  "justeat": {
+    "name": "Just Eat",
+    "url": "https://www.just-eat.co.uk/restaurants-keystore-paisley-pa1/menu?shipping=pickup#category_0a9729a9-9da0-46ec-9a38-caf2f5e89f25",
+    "requires_postcode": true,
+    "postcode": "GL52 3DT",
+    "postcode_selectors": {
+      "input": "input[name='postcode'], input[data-test-id='postcode-input']",
+      "submit": "button[type='submit'], button[data-test-id='postcode-submit']"
+    },
+    "scroll_passes": 90,
+    "extraction": {
+      "name": {
+        "xpath": "ancestor::article[1]//h3 | ancestor::li[1]//h3 | ancestor::div[3]//h3 | ancestor::div[4]//h3",
+        "filters": [
+          "no_price",
+          "min_length:3"
+        ]
+      },
+      "image": {
+        "xpath": "ancestor::div[5]//figure//img | ancestor::div[6]//figure//img | ancestor::div[7]//figure//img | ancestor::div[5]//img | ancestor::div[6]//img | ancestor::div[7]//img",
+        "attribute": "srcset",
+        "fallback_attribute": "src",
+        "srcset_index": -1,
+        "base_url": "https://just-eat-prod-eu-res.cloudinary.com/image/upload/c_fill,q_auto,c_thumb,",
+        "trim_after": [
+          ".jpg",
+          ".jpeg"
+        ]
+      }
+    }
+  },
+  "snappyshopper": {
+    "name": "Snappy Shopper",
+    "url": "https://www.snappyshopper.co.uk/stores/one-stop-cheltenham-whaddon-4042/category/fresh-juices-smoothies-886238",
+    "requires_postcode": true,
+    "postcode": "GL52 3DT",
+    "postcode_selectors": {
+      "input": "input[type='text'][placeholder*='postcode'], input[name='postcode']",
+      "submit": "button[type='submit']",
+      "popup_search_button": "//*[@id='app']/div[3]/div/div/div[2]/div/div[2]/div/button"
+    },
+    "scroll_passes": 20,
+    "extraction": {
+      "name": {
+        "xpath": "ancestor::div[5]/../div[1]//a/span/span",
+        "filters": [
+          "no_from_prefix",
+          "no_your_current_prefix",
+          "no_digit_only",
+          "min_length:3"
+        ]
+      },
+      "image": {
+        "xpath": "ancestor::div[5]/../div[1]//img",
+        "attribute": "src",
+        "base_url": "https://www.snappyshopper.co.uk",
+        "trim_after": [
+          ".jpg",
+          ".jpeg"
+        ]
+      }
+    }
+  }
+}
