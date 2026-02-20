@@ -452,3 +452,67 @@ async def search_images_download(file: UploadFile = File(...)):
         logger.error(f"Error processing search-images-download: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
+
+# ==================== FLASH CSV UPDATER ====================
+
+@app.post("/update-flash-csv")
+async def update_flash_csv(
+    flash_csv: UploadFile = File(...),
+    booker_csv: UploadFile = File(...)
+):
+    """
+    Merge a Flash CSV with a Booker processed CSV.
+    Matches on SKU == booker_id and fills in Product Price* and Product Image Url.
+    """
+    try:
+        flash_df  = pd.read_csv(io.BytesIO(await flash_csv.read()),  dtype=str)
+        booker_df = pd.read_csv(io.BytesIO(await booker_csv.read()), dtype=str)
+
+        # Normalise column names
+        flash_df.columns  = flash_df.columns.str.strip()
+        booker_df.columns = booker_df.columns.str.strip()
+
+        # Validate required columns
+        for col in ["SKU", "Product Price*", "Product Image Url"]:
+            if col not in flash_df.columns:
+                raise HTTPException(status_code=422, detail=f"Flash CSV is missing column: '{col}'")
+        for col in ["booker_id", "price", "image_url"]:
+            if col not in booker_df.columns:
+                raise HTTPException(status_code=422, detail=f"Booker CSV is missing column: '{col}'")
+
+        flash_df["SKU"]          = flash_df["SKU"].str.strip()
+        booker_df["booker_id"]   = booker_df["booker_id"].str.strip()
+
+        # Merge on SKU == booker_id (left join keeps all Flash rows)
+        merged = flash_df.merge(
+            booker_df[["booker_id", "price", "image_url"]],
+            left_on="SKU",
+            right_on="booker_id",
+            how="left"
+        )
+
+        # Fill in price and image only where booker data was found
+        merged["Product Price*"]    = merged["price"].combine_first(merged["Product Price*"])
+        merged["Product Image Url"] = merged["image_url"].combine_first(merged["Product Image Url"])
+
+        merged.drop(columns=["booker_id", "price", "image_url"], inplace=True)
+
+        matched = merged["Product Price*"].notna().sum()
+        logger.info(f"Flash CSV updated: {matched}/{len(merged)} rows matched")
+
+        buf = io.BytesIO()
+        merged.to_csv(buf, index=False)
+        buf.seek(0)
+
+        from fastapi.responses import StreamingResponse
+        return StreamingResponse(
+            buf,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=updated_flash.csv"}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in update-flash-csv: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

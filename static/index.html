@@ -698,6 +698,55 @@
 
             <div id="bookerAlert"></div>
         </div>
+
+        <!-- ===== FLASH CSV UPDATER SECTION ===== -->
+        <div class="card" style="margin-bottom:30px;" id="flashCard">
+            <h2>⚡ Flash CSV Updater</h2>
+            <p style="color:#888;font-size:.95rem;margin-bottom:24px;">
+                Upload your <strong>Flash CSV</strong> and the <strong>Booker processed CSV</strong>.
+                Prices and images will be matched on SKU&nbsp;↔&nbsp;booker_id and merged automatically.
+            </p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+                <!-- Flash CSV drop -->
+                <div>
+                    <label style="font-weight:600;font-size:.9rem;display:block;margin-bottom:8px;">1️⃣ Flash CSV (the one you want to update)</label>
+                    <div class="drop-zone" id="flashDropZone" onclick="document.getElementById('flashFileInput').click()" style="padding:28px 16px;">
+                        <span class="dz-icon">📄</span>
+                        <p style="font-size:.9rem;">Drop Flash CSV or click to browse</p>
+                        <div id="flashFileChosen" style="margin-top:8px;font-size:.82rem;color:#667eea;font-weight:600;"></div>
+                    </div>
+                    <input type="file" id="flashFileInput" accept=".csv" style="display:none;">
+                </div>
+
+                <!-- Booker CSV drop -->
+                <div>
+                    <label style="font-weight:600;font-size:.9rem;display:block;margin-bottom:8px;">2️⃣ Booker Processed CSV (output from Booker CSV Mapper above)</label>
+                    <div class="drop-zone" id="bookerDropZone2" onclick="document.getElementById('bookerFileInput2').click()" style="padding:28px 16px;">
+                        <span class="dz-icon">📋</span>
+                        <p style="font-size:.9rem;">Drop Booker CSV or click to browse</p>
+                        <div id="bookerFileChosen2" style="margin-top:8px;font-size:.82rem;color:#667eea;font-weight:600;"></div>
+                    </div>
+                    <input type="file" id="bookerFileInput2" accept=".csv" style="display:none;">
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div id="flashStatus" style="font-size:.93rem;color:#555;margin-bottom:10px;min-height:22px;"></div>
+            <div class="progress-bar-wrap" id="flashProgressWrap" style="display:none;margin-bottom:18px;">
+                <div class="progress-bar" id="flashProgressBar"></div>
+            </div>
+
+            <!-- Actions -->
+            <div class="btn-group">
+                <button class="btn btn-primary" id="runFlashBtn" onclick="runFlashUpdate()" disabled>
+                    ⚡ Merge & Download Updated Flash CSV
+                </button>
+                <button class="btn btn-secondary" onclick="resetFlash()">🔄 Reset</button>
+            </div>
+
+            <div id="flashAlert" style="margin-top:14px;"></div>
+        </div>
     </div>
 
     <script>
@@ -1091,6 +1140,98 @@
             setTimeout(() => {
                 alertDiv.innerHTML = '';
             }, 5000);
+        }
+
+        // ===== FLASH CSV UPDATER =====
+        let flashFile = null;
+        let bookerFile2 = null;
+
+        function setupFlashDrop(zoneId, inputId, fileVar, chosenId, setter) {
+            const zone = document.getElementById(zoneId);
+            const input = document.getElementById(inputId);
+            ['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('drag-over'); }));
+            ['dragleave','dragend','drop'].forEach(ev => zone.addEventListener(ev, e => { zone.classList.remove('drag-over'); }));
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                const f = e.dataTransfer.files[0];
+                if (f && f.name.endsWith('.csv')) setter(f, chosenId);
+                else showAlert('flashAlert', '⚠️ Please drop a CSV file.', 'error');
+            });
+            input.addEventListener('change', e => { if (e.target.files[0]) setter(e.target.files[0], chosenId); });
+        }
+
+        function setFlashFile(f, chosenId) {
+            flashFile = f;
+            document.getElementById(chosenId).textContent = '✅ ' + f.name;
+            checkFlashReady();
+        }
+
+        function setBookerFile2(f, chosenId) {
+            bookerFile2 = f;
+            document.getElementById(chosenId).textContent = '✅ ' + f.name;
+            checkFlashReady();
+        }
+
+        function checkFlashReady() {
+            document.getElementById('runFlashBtn').disabled = !(flashFile && bookerFile2);
+        }
+
+        setupFlashDrop('flashDropZone',   'flashFileInput',   flashFile,   'flashFileChosen',   setFlashFile);
+        setupFlashDrop('bookerDropZone2', 'bookerFileInput2', bookerFile2, 'bookerFileChosen2', setBookerFile2);
+
+        async function runFlashUpdate() {
+            if (!flashFile || !bookerFile2) return;
+            const btn = document.getElementById('runFlashBtn');
+            btn.disabled = true;
+            document.getElementById('flashStatus').textContent = '⏳ Merging CSVs…';
+            document.getElementById('flashProgressWrap').style.display = 'block';
+            document.getElementById('flashProgressBar').style.width = '60%';
+
+            try {
+                const fd = new FormData();
+                fd.append('flash_csv',  flashFile);
+                fd.append('booker_csv', bookerFile2);
+
+                const res = await fetch(`${API_BASE}/update-flash-csv`, { method: 'POST', body: fd });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Server error');
+                }
+
+                document.getElementById('flashProgressBar').style.width = '100%';
+
+                // Auto-download
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'updated_flash.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                document.getElementById('flashStatus').textContent = '✅ Done! updated_flash.csv downloaded.';
+
+            } catch (err) {
+                document.getElementById('flashProgressBar').style.width = '0%';
+                document.getElementById('flashProgressWrap').style.display = 'none';
+                document.getElementById('flashStatus').textContent = '';
+                showAlert('flashAlert', '❌ ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function resetFlash() {
+            flashFile = null;
+            bookerFile2 = null;
+            ['flashFileInput','bookerFileInput2'].forEach(id => document.getElementById(id).value = '');
+            ['flashFileChosen','bookerFileChosen2'].forEach(id => document.getElementById(id).textContent = '');
+            document.getElementById('flashStatus').textContent = '';
+            document.getElementById('flashProgressWrap').style.display = 'none';
+            document.getElementById('flashProgressBar').style.width = '0%';
+            document.getElementById('flashAlert').innerHTML = '';
+            document.getElementById('runFlashBtn').disabled = true;
         }
     </script>
 </body>
