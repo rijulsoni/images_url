@@ -20,10 +20,12 @@ from typing import List, Optional
 import pandas as pd
 import io
 import os
+import re
 import json
 import time
 from search_service import process_products_csv
 from scraper_service import UndetectedScraper
+from ai_mapper import detect_columns_with_ai
 
 
 app = FastAPI(
@@ -260,6 +262,136 @@ async def update_site_config(site_key: str, config: dict):
     except Exception as e:
         logger.error(f"Error updating site config: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to update configuration: {str(e)}")
+
+# ==================== CSV COLUMN DETECTION ENDPOINT ====================
+
+def extract_rrp(text):
+    """
+    Extract numeric RRP price — ONLY when 'RRP' is explicitly present in the string.
+    Handles:
+      - "RRP £2.99" / "RRP 2.99" (price after RRP)
+      - "£2.29 RRP Case of 12" (price before RRP with £)
+      - "inc 1.11 RRP 18x330m" (decimal price before RRP, no £)
+    Returns None for anything without an explicit RRP mention.
+    """
+    if pd.isna(text):
+        return None
+    s = str(text)
+
+    # Must contain 'RRP' (case-insensitive) — strict gate
+    if not re.search(r'RRP', s, re.IGNORECASE):
+        return None
+
+    # Pattern 1: price comes BEFORE "RRP" — e.g. "£2.29 RRP" or "1.11 RRP"
+    m = re.search(r'£?\s*(\d+\.\d+)\s+RRP', s, re.IGNORECASE)
+    if m:
+        return m.group(1)
+
+    # Pattern 2: price comes AFTER "RRP" — e.g. "RRP £2.99"
+    # Only capture values that look like a real price (decimal, or integer ≥ £1 and < £500)
+    m = re.search(r'RRP\s*£?\s*(\d+\.?\d*)', s, re.IGNORECASE)
+    if m:
+        candidate = m.group(1)
+        try:
+            val = float(candidate)
+            # Exclude pack quantities masquerading as prices (e.g. "18" in "RRP 18x330ml")
+            if '.' in candidate or (1 <= val < 500 and val >= 10):
+                return candidate
+        except ValueError:
+            pass
+
+    return None
+
+
+@app.post("/upload-csv/")
+async def upload_csv(file: UploadFile = File(...)):
+    """
+    Upload a grocery CSV, auto-detect columns with AI, and download
+    a cleaned CSV with: booker_id, product_name, price, image_url.
+    """
+    logger.info(f"Received upload-csv request for file: {file.filename}")
+
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Please upload a CSV file.")
+
+    try:
+        contents = await file.read()
+        df = pd.read_csv(io.BytesIO(contents))
+
+        if df.empty:
+            raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
+
+        # 🔥 AI detects correct columns
+        mapping = detect_columns_with_ai(df)
+        name_col   = mapping["product_name"]
+        price_col  = mapping["price"]
+        image_col  = mapping["image_url"]
+        booker_col = mapping["booker_id"]
+        logger.info(f"Detected mapping: {mapping}")
+
+        # Guard: make sure every column was detected
+        missing = [k for k, v in mapping.items() if v is None]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Could not auto-detect columns: {missing}. "
+                    f"CSV columns found: {list(df.columns)}. "
+                    f"Please ensure the CSV has product name, price, image URL, and booker ID columns."
+                )
+            )
+
+        logger.info(f"Price col samples:  {df[price_col].dropna().head(5).tolist()}")
+        logger.info(f"Booker col samples: {df[booker_col].dropna().head(5).tolist()}")
+
+
+        # Build clean output DataFrame
+        new_df = pd.DataFrame()
+        new_df["booker_id"]    = df[booker_col]
+        new_df["product_name"] = df[name_col]
+        new_df["price"]        = df[price_col].apply(extract_rrp)
+        new_df["image_url"]    = df[image_col]
+
+        total_before = len(new_df)
+
+        # Remove rows with no price
+        new_df = new_df.dropna(subset=["price"])
+        logger.info(f"After price filter: {len(new_df)}/{total_before} rows remain")
+
+        # Keep only valid Booker IDs (5–8 digits, not EAN barcodes)
+        new_df = new_df[
+            new_df["booker_id"].astype(str).str.strip().str.match(r'^\d{5,8}$')
+        ]
+        logger.info(f"After booker_id filter: {len(new_df)}/{total_before} rows remain")
+
+        if new_df.empty:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"All rows were filtered out. "
+                    f"Detected columns → name='{name_col}', price='{price_col}', "
+                    f"image='{image_col}', booker_id='{booker_col}'. "
+                    f"Check that the price column contains values like 'RRP £2.99' "
+                    f"and booker_id is 5-8 digits."
+                )
+            )
+
+        output_file = "processed_products.csv"
+        new_df.to_csv(output_file, index=False)
+
+        logger.info(f"Processed {len(new_df)} products, returning CSV")
+        return FileResponse(
+            output_file,
+            media_type="text/csv",
+            filename="processed_products.csv"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in upload-csv: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
 
 # ==================== IMAGE SEARCH ENDPOINTS ====================
 

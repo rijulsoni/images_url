@@ -3,6 +3,7 @@ import time
 import pandas as pd
 import logging
 from typing import List, Dict
+from ai_mapper import detect_columns_with_ai
 
 # Configure logging for the service
 logger = logging.getLogger(__name__)
@@ -126,19 +127,28 @@ def process_products_csv(input_df: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"Starting batch processing of {len(input_df)} products")
     logger.info(f"input_df is here {input_df}")
     results_data = []
-    
-    # Try to find the product name column
-    product_col = 'Product Name'
-    if product_col not in input_df.columns:
-        # Fallback to similar names if 'Product Name' isn't found
-        for col in input_df.columns:
-            if 'product' in col.lower() and 'name' in col.lower():
-                product_col = col
-                break
-        else:
-            # Last resort: use the first column if no 'Product Name' is found
-            product_col = input_df.columns[0]
-            logger.warning(f"Column 'Product Name' not found. Using '{product_col}' instead.")
+
+    # Use AI to detect column names
+    try:
+        detected = detect_columns_with_ai(input_df)
+        product_col = detected.get("product_name")
+        logger.info(f"AI detected columns: {detected}")
+    except Exception as e:
+        logger.warning(f"AI column detection failed: {e}. Falling back to heuristics.")
+        detected = {}
+        product_col = None
+
+    # Fallback heuristic if AI didn't return a valid column
+    if not product_col or product_col not in input_df.columns:
+        product_col = 'Product Name'
+        if product_col not in input_df.columns:
+            for col in input_df.columns:
+                if 'product' in col.lower() and 'name' in col.lower():
+                    product_col = col
+                    break
+            else:
+                product_col = input_df.columns[0]
+                logger.warning(f"Column 'Product Name' not found. Using '{product_col}' instead.")
 
     for i, product in enumerate(input_df[product_col], start=1):
         logger.info(f"Processing product {i}/{len(input_df)}: {product}")
