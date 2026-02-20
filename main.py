@@ -23,6 +23,9 @@ import os
 import re
 import json
 import time
+import urllib.parse
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from search_service import process_products_csv
 from scraper_service import UndetectedScraper
 from ai_mapper import detect_columns_with_ai
@@ -33,6 +36,8 @@ app = FastAPI(
     description="API to scrape e-commerce sites and search for product images",
     version="2.0.0"
 )
+
+executor = ThreadPoolExecutor(max_workers=10)
 
 # Add CORS middleware
 app.add_middleware(
@@ -303,6 +308,110 @@ def extract_rrp(text):
     return None
 
 
+# ==================== S3 IMAGE UPLOAD ====================
+
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+    _boto3_available = True
+except ImportError:
+    _boto3_available = False
+    logger.warning("boto3 not installed — S3 image upload disabled. Run: pip install boto3")
+
+_s3_client = None
+
+def _get_s3():
+    """Lazily initialise the boto3 S3 client from env vars."""
+    global _s3_client
+    if not _boto3_available:
+        raise RuntimeError("boto3 is not installed")
+    if _s3_client is None:
+        _s3_client = boto3.client(
+            "s3",
+            region_name=os.getenv("AWS_REGION", "eu-west-1"),
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        )
+    return _s3_client
+
+def upload_image_to_s3(booker_url: str) -> str:
+    logger.info(f"Uploading image to S3333: {booker_url}")
+    bucket = os.getenv("S3_BUCKET_NAME")
+    region = os.getenv("AWS_REGION", "eu-west-1")
+
+    try:
+        parsed = urllib.parse.urlparse(booker_url)
+        filename = parsed.path.lstrip("/").replace("/", "_")
+        s3_key = f"booker-images/{filename}"
+
+        s3 = _get_s3()
+        headers = {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "accept-language": "en-US,en;q=0.9",
+            "priority": "u=0, i",
+            "sec-ch-ua": '"Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "none",
+            "sec-fetch-user": "?1",
+            "upgrade-insecure-requests": "1",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+        }
+        # Download image first so we know the content type
+        import requests
+        img_resp = requests.get(booker_url, headers=headers, timeout=20)
+        logger.info(f"Image response: {img_resp} (status={img_resp.status_code})")
+        if img_resp.status_code != 200:
+            logger.warning(f"Failed to fetch image ({img_resp.status_code}): {booker_url}")
+            return booker_url
+
+        content_type = img_resp.headers.get("Content-Type", "image/jpeg")
+        logger.info(f"Content type: {content_type}")
+        # Include ContentType in presigned URL so signatures match
+        presigned_url = s3.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': bucket,
+                'Key': s3_key,
+                'ContentType': content_type  # ✅ must match upload header
+            },
+            ExpiresIn=300
+        )
+        logger.info(f"Uploading image to S3 444: {presigned_url}")
+
+        # ✅ Send the same Content-Type header during upload
+        upload_resp = requests.put(
+            presigned_url,
+            data=img_resp.content,
+            headers={"Content-Type": content_type}
+        )
+
+        if upload_resp.status_code == 200:
+            return f"https://{bucket}.s3.{region}.amazonaws.com/{s3_key}"
+
+    except Exception as e:
+        logger.warning(f"S3 upload failed: {e}")
+
+    return booker_url
+    
+async def upload_parallel(urls):
+   
+    loop = asyncio.get_running_loop()
+    logger.info(f"Uploadfrrfrfrf {len(urls)} images to S3")
+    tasks = [
+        loop.run_in_executor(
+            executor,
+            upload_image_to_s3,
+            str(u)
+        )
+        for u in urls
+        if pd.notna(u) and str(u).startswith("http")
+    ]
+
+    return await asyncio.gather(*tasks)
+
 @app.post("/upload-csv/")
 async def upload_csv(file: UploadFile = File(...)):
     """
@@ -454,36 +563,39 @@ async def search_images_download(file: UploadFile = File(...)):
 
 
 # ==================== FLASH CSV UPDATER ====================
-
 @app.post("/update-flash-csv")
 async def update_flash_csv(
     flash_csv: UploadFile = File(...),
     booker_csv: UploadFile = File(...)
 ):
-    """
-    Merge a Flash CSV with a Booker processed CSV.
-    Matches on SKU == booker_id and fills in Product Price* and Product Image Url.
-    """
     try:
-        flash_df  = pd.read_csv(io.BytesIO(await flash_csv.read()),  dtype=str)
+        flash_df  = pd.read_csv(io.BytesIO(await flash_csv.read()), dtype=str)
         booker_df = pd.read_csv(io.BytesIO(await booker_csv.read()), dtype=str)
 
-        # Normalise column names
         flash_df.columns  = flash_df.columns.str.strip()
         booker_df.columns = booker_df.columns.str.strip()
 
-        # Validate required columns
-        for col in ["SKU", "Product Price*", "Product Image Url"]:
-            if col not in flash_df.columns:
-                raise HTTPException(status_code=422, detail=f"Flash CSV is missing column: '{col}'")
-        for col in ["booker_id", "price", "image_url"]:
-            if col not in booker_df.columns:
-                raise HTTPException(status_code=422, detail=f"Booker CSV is missing column: '{col}'")
+        flash_df["SKU"]        = flash_df["SKU"].astype(str).str.strip()
+        booker_df["booker_id"] = booker_df["booker_id"].astype(str).str.strip()
 
-        flash_df["SKU"]          = flash_df["SKU"].str.strip()
-        booker_df["booker_id"]   = booker_df["booker_id"].str.strip()
+        # ===============================
+        # 🚀 STEP 1: BOOKER IMAGE → S3
+        # ===============================
+        logger.info("Uploading Booker images to S3 BEFORE merge...")
 
-        # Merge on SKU == booker_id (left join keeps all Flash rows)
+        booker_image_urls = booker_df["image_url"].tolist()
+
+        # Parallel Upload
+        s3_urls = await upload_parallel(booker_image_urls)
+
+        # Replace Booker CDN with S3 URL
+        booker_df["image_url"] = s3_urls
+
+        logger.info("Booker images uploaded to S3 successfully")
+
+        # ===============================
+        # 🚀 STEP 2: NOW MERGE
+        # ===============================
         merged = flash_df.merge(
             booker_df[["booker_id", "price", "image_url"]],
             left_on="SKU",
@@ -491,15 +603,16 @@ async def update_flash_csv(
             how="left"
         )
 
-        # Fill in price and image only where booker data was found
-        merged["Product Price*"]    = merged["price"].combine_first(merged["Product Price*"])
+        merged["Product Price*"] = merged["price"].combine_first(merged["Product Price*"])
         merged["Product Image Url"] = merged["image_url"].combine_first(merged["Product Image Url"])
 
         merged.drop(columns=["booker_id", "price", "image_url"], inplace=True)
 
-        matched = merged["Product Price*"].notna().sum()
-        logger.info(f"Flash CSV updated: {matched}/{len(merged)} rows matched")
+        logger.info("Merge complete — Flash now contains S3 image links")
 
+        # ===============================
+        # 🚀 STEP 3: RETURN CSV
+        # ===============================
         buf = io.BytesIO()
         merged.to_csv(buf, index=False)
         buf.seek(0)
@@ -511,8 +624,6 @@ async def update_flash_csv(
             headers={"Content-Disposition": "attachment; filename=updated_flash.csv"}
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error in update-flash-csv: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

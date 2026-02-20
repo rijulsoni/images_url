@@ -18,3 +18,4 @@ seleniumbase
 beautifulsoup4
 lxml
 anthropic
+boto3
