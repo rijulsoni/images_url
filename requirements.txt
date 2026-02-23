@@ -19,3 +19,6 @@ beautifulsoup4
 lxml
 anthropic
 boto3
+google-search-results
+motor
+python-dotenv

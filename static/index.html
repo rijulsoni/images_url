@@ -3,9 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scraper Configuration Manager</title>
+    <title>AppSuite | Professional Scraper Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        :root {
+            /* Color Palette - Sophisticated Slate */
+            --primary: #4361ee;
+            --primary-dark: #3a4ed5;
+            --accent: #7209b7;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            
+            /* Backgrounds */
+            --bg-gradient: radial-gradient(circle at 50% 0%, #0f172a 0%, #020617 100%);
+            --sidebar-bg: rgba(2, 6, 23, 0.7);
+            --content-bg: rgba(15, 23, 42, 0.3);
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --glass-shine: rgba(255, 255, 255, 0.04);
+            
+            /* Text */
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            
+            /* Spacing & Sizes */
+            --sidebar-width: 260px;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,746 +47,948 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            height: 100vh;
+            color: var(--text-main);
+            display: flex;
+            overflow: hidden;
+            letter-spacing: -0.01em;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--glass-border);
+            padding: 32px 16px;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 0 12px;
+            margin-bottom: 32px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-header i {
+            color: var(--primary);
+            filter: drop-shadow(0 0 8px var(--primary));
+        }
+
+        nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .nav-item {
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: var(--transition);
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .nav-item:hover {
+            background: var(--glass-bg);
+            color: white;
+            transform: translateX(4px);
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-item i {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            position: relative;
+            background: radial-gradient(circle at 50% 0%, rgba(67, 97, 238, 0.03) 0%, transparent 70%);
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1300px;
             margin: 0 auto;
         }
 
+        .page {
+            display: none;
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .header {
-            text-align: center;
-            color: white;
             margin-bottom: 40px;
         }
 
         .header h1 {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            font-size: 2.25rem;
+            color: white;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
         }
 
         .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
+            color: var(--text-muted);
+            font-size: 1rem;
         }
 
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        @media (max-width: 1200px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
+        /* ===== CARDS & COMPONENTS ===== */
         .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-shine), transparent);
         }
 
         .card h2 {
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-            color: #667eea;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: white;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
-        .card h2::before {
-            content: '⚙️';
-            font-size: 1.5rem;
+        .card h2 i {
+            color: var(--primary);
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: 600;
-            color: #555;
-            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .form-group input,
-        .form-group textarea,
-        .form-group select {
+        .form-group textarea {
             width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
+            padding: 14px 18px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: white;
             font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.3s ease;
+            font-family: inherit;
+            transition: var(--transition);
         }
 
         .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
+        .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary);
+            background: rgba(15, 23, 42, 0.6);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
         }
 
         .form-group textarea {
-            min-height: 120px;
+            min-height: 140px;
             resize: vertical;
-            font-family: 'Courier New', monospace;
+            line-height: 1.6;
         }
 
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
-
+        /* ===== BUTTONS ===== */
         .btn {
             padding: 12px 24px;
             border: none;
-            border-radius: 10px;
-            font-size: 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary);
             color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
         }
 
         .btn-primary:hover {
+            background: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
         }
 
         .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
+            background: var(--glass-bg);
+            color: white;
+            border: 1px solid var(--glass-border);
         }
 
         .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-        }
-
-        .btn-danger:hover {
+            background: rgba(255, 255, 255, 0.08);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
         }
 
-        .btn-success {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
+        .btn i {
+            width: 18px;
+            height: 18px;
         }
 
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
-        }
+        /* Reuse success/danger aliases */
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
 
         .btn-group {
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 12px;
+            margin-top: 24px;
         }
 
+        /* ===== CONFIG CARDS ===== */
         .config-list {
             display: grid;
-            gap: 15px;
+            gap: 16px;
         }
 
         .config-item {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid rgba(102, 126, 234, 0.2);
-            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 24px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            transition: var(--transition);
         }
 
         .config-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--primary);
+            transform: scale(1.005);
         }
 
         .config-item h3 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 1.3rem;
+            color: white;
+            margin-bottom: 12px;
+            font-size: 1.25rem;
         }
 
         .config-item p {
-            color: #666;
-            margin-bottom: 5px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
             font-size: 0.9rem;
         }
 
         .config-item .url {
-            color: #764ba2;
+            color: var(--primary);
             word-break: break-all;
-            font-size: 0.85rem;
+            opacity: 0.8;
         }
 
-        .config-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .config-actions button {
-            flex: 1;
-            padding: 8px 16px;
-            font-size: 0.9rem;
-        }
-
-        .results-container {
-            margin-top: 30px;
-        }
-
+        /* ===== RESULTS GRID ===== */
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 32px;
         }
 
         .product-card {
-            background: white;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+            background: var(--glass-bg);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            border: 1px solid var(--glass-border);
+            transition: var(--transition);
         }
 
         .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--primary);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
         }
 
         .product-card img {
             width: 100%;
-            height: 180px;
+            height: 200px;
             object-fit: cover;
-            border-radius: 8px;
-            margin-bottom: 12px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 16px;
         }
 
-        .product-card h4 {
-            font-size: 1rem;
-            margin-bottom: 8px;
-            color: #333;
-            min-height: 40px;
-        }
-
-        .product-card .price {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #667eea;
-        }
-
-        .loading {
+        /* ===== DROP ZONES ===== */
+        .drop-zone {
+            border: 2px dashed var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 60px 40px;
             text-align: center;
-            padding: 40px;
-            color: #667eea;
-            font-size: 1.2rem;
+            cursor: pointer;
+            transition: var(--transition);
+            background: rgba(15, 23, 42, 0.2);
         }
 
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s steps(4, end) infinite;
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
         }
 
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
+        .drop-zone i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 16px;
+            display: block;
         }
 
-        .alert {
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-
-        .alert-success {
-            background: rgba(79, 172, 254, 0.2);
-            color: #0066cc;
-            border: 2px solid rgba(79, 172, 254, 0.4);
-        }
-
-        .alert-error {
-            background: rgba(245, 87, 108, 0.2);
-            color: #cc0033;
-            border: 2px solid rgba(245, 87, 108, 0.4);
-        }
-
+        /* ===== STATS ===== */
         .stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 20px;
+            margin-bottom: 32px;
         }
 
         .stat-card {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            padding: 20px;
-            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 24px;
+            border-radius: var(--radius-md);
             text-align: center;
+            border: 1px solid var(--glass-border);
         }
 
         .stat-card .number {
             font-size: 2.5rem;
-            font-weight: 700;
-            color: #667eea;
+            font-weight: 800;
+            color: white;
+            line-height: 1;
         }
 
         .stat-card .label {
-            color: #666;
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
-        }
-
-        .empty-state::before {
-            content: '📦';
-            font-size: 4rem;
-            display: block;
-            margin-bottom: 20px;
-        }
-
-        /* ===== BOOKER CSV SECTION ===== */
-        .booker-card h2::before { content: '🗂️'; }
-
-        .drop-zone {
-            border: 3px dashed rgba(102,126,234,0.4);
-            border-radius: 16px;
-            padding: 50px 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: linear-gradient(135deg,rgba(102,126,234,0.05),rgba(118,75,162,0.05));
-            position: relative;
-        }
-
-        .drop-zone.drag-over {
-            border-color: #667eea;
-            background: rgba(102,126,234,0.12);
-            transform: scale(1.01);
-        }
-
-        .drop-zone .dz-icon {
-            font-size: 3.5rem;
-            margin-bottom: 12px;
-            display: block;
-            transition: transform 0.3s;
-        }
-
-        .drop-zone:hover .dz-icon { transform: translateY(-4px); }
-
-        .drop-zone p {
-            color: #667eea;
-            font-weight: 600;
-            font-size: 1.05rem;
-            margin-bottom: 6px;
-        }
-
-        .drop-zone small { color: #999; font-size: 0.85rem; }
-
-        #csvFileInput { display: none; }
-
-        .file-chosen {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(102,126,234,0.15);
-            border-radius: 8px;
-            padding: 8px 16px;
-            margin-top: 14px;
-            font-size: 0.9rem;
-            color: #667eea;
-            font-weight: 600;
-        }
-
-        /* AI detection chips */
-        .mapping-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin: 22px 0;
-        }
-
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 30px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            background: rgba(102,126,234,0.12);
-            color: #667eea;
-            border: 1.5px solid rgba(102,126,234,0.3);
-            transition: all 0.3s;
-        }
-
-        .chip.detected {
-            background: rgba(79,172,254,0.15);
-            color: #0074cc;
-            border-color: rgba(79,172,254,0.4);
-        }
-
-        .chip .chip-label { opacity: 0.65; font-weight: 500; }
-
-        /* Preview table */
-        .preview-wrap {
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1.5px solid rgba(102,126,234,0.2);
-            margin-top: 6px;
-        }
-
-        .preview-scroll { overflow-x: auto; max-height: 320px; overflow-y: auto; }
-
-        .preview-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-
-        .preview-table th {
-            background: linear-gradient(135deg,#667eea,#764ba2);
-            color: white;
-            padding: 12px 16px;
-            text-align: left;
-            position: sticky;
-            top: 0;
+            color: var(--text-muted);
             font-size: 0.8rem;
-            letter-spacing: 0.04em;
             text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 8px;
         }
 
-        .preview-table td {
-            padding: 10px 16px;
-            border-bottom: 1px solid rgba(102,126,234,0.1);
-            color: #444;
-            max-width: 220px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .preview-table tr:nth-child(even) td {
-            background: rgba(102,126,234,0.04);
-        }
-
-        .preview-table tr:hover td {
-            background: rgba(102,126,234,0.1);
-        }
-
-        /* Progress bar */
-        .progress-bar-wrap {
-            height: 6px;
-            background: rgba(102,126,234,0.15);
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 18px 0 6px;
-        }
-
-        .progress-bar {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg,#667eea,#764ba2);
-            border-radius: 10px;
-            transition: width 0.4s ease;
-            animation: shimmer 1.5s infinite;
-            background-size: 200% 100%;
-        }
-
-        @keyframes shimmer {
-            0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        .booker-status {
-            font-size: 0.9rem;
-            color: #667eea;
+        /* ===== ALERTS ===== */
+        .alert {
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
             font-weight: 500;
-            min-height: 22px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--glass-bg);
+            border-left: 4px solid transparent;
         }
 
-        .btn-download {
-            background: linear-gradient(135deg,#43e97b,#38f9d7);
-            color: #1a4a30;
+        .alert-success { border-left-color: var(--success); color: #86efac; }
+        .alert-error { border-left-color: var(--danger); color: #fca5a5; }
+
+        /* ===== IMAGES SELECTION ===== */
+        .candidate-strip {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 10px 0;
+            mask-image: linear-gradient(to right, black 90%, transparent);
         }
 
-        .btn-download:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(67,233,123,0.4);
+        .candidate-item {
+            flex: 0 0 140px;
+            height: 140px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            background: #000;
+        }
+
+        .candidate-item.selected {
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .product-selection-row h4 {
+            font-size: 0.95rem;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .candidate-strip {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scrollbar-width: thin;
+        }
+
+        .candidate-strip::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .candidate-strip::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+        }
+
+        .candidate-item {
+            flex: 0 0 120px;
+            height: 120px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            background: #fff;
+        }
+
+        .candidate-item:hover {
+            transform: scale(1.05);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .candidate-item.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 12px rgba(102, 126, 234, 0.5);
+        }
+
+        .candidate-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .candidate-item .check {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #667eea;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .candidate-item.selected .check {
+            display: flex;
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-container {
+            width: 100%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            z-index: 1000;
+            animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-inner {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .modal-grid .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        .checkbox-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .checkbox-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--primary);
+        }
+
+        .checkbox-card input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .checkbox-card label {
+            margin-bottom: 0;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: normal;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Scraper Configuration Manager</h1>
-            <p>Manage your e-commerce scraping configurations with ease</p>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1><i data-lucide="layout-dashboard"></i> AppSuite</h1>
         </div>
+        <nav>
+            <a class="nav-item active" href="#dashboard" onclick="showPage('dashboard')">
+                <i data-lucide="home"></i>
+                <span>Overview</span>
+            </a>
+            <a class="nav-item" href="#quick-scrape" onclick="showPage('quick-scrape')">
+                <i data-lucide="zap"></i>
+                <span>Quick Scrape</span>
+            </a>
+            <a class="nav-item" href="#image-updater" onclick="showPage('image-updater')">
+                <i data-lucide="image"></i>
+                <span>Image Updater</span>
+            </a>
+            <a class="nav-item" href="#flash-updater" onclick="showPage('flash-updater')">
+                <i data-lucide="refresh-cw"></i>
+                <span>Flash Updater</span>
+            </a>
+            <a class="nav-item" href="#booker-mapper" onclick="showPage('booker-mapper')">
+                <i data-lucide="file-json"></i>
+                <span>Booker Mapper</span>
+            </a>
+        </nav>
+    </div>
 
-        <div class="main-grid">
-            <!-- Left Column: Scrape Form -->
-            <div class="card">
-                <h2>Quick Scrape</h2>
-                <div id="scrapeAlert"></div>
+    <div class="main-content">
+        <div class="container">
+            <!-- DASHBOARD OVERVIEW PAGE -->
+            <div id="dashboard" class="page active">
+                <div class="header">
+                    <h1>Welcome back 👋</h1>
+                    <p>Here's what's happening with your data suite</p>
+                </div>
                 
-                <div class="form-group">
-                    <label for="scrapeUrl">URL to Scrape</label>
-                    <input type="url" id="scrapeUrl" placeholder="https://example.com/products" required>
-                </div>
-
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="headlessMode" checked>
-                    <label for="headlessMode">Run in hidden mode (headless)</label>
-                </div>
-
-                <div class="btn-group">
-                    <button class="btn btn-success" onclick="startScrape()">
-                        🎯 Start Scraping
-                    </button>
-                </div>
-
-                <div id="scrapeResults" class="results-container"></div>
-            </div>
-
-            <!-- Right Column: Configurations List -->
-            <div class="card">
-                <h2>Saved Configurations</h2>
-                <div id="configAlert"></div>
-                
-                <div class="stats" id="statsContainer" style="display: none;">
+                <div class="stats">
                     <div class="stat-card">
-                        <div class="number" id="totalConfigs">0</div>
+                        <div class="number" id="stat-total-configs">0</div>
                         <div class="label">Configurations</div>
                     </div>
                     <div class="stat-card">
-                        <div class="number" id="totalScrapes">0</div>
-                        <div class="label">Total Scrapes</div>
+                        <div class="number" id="stat-total-scrapes">0</div>
+                        <div class="label">Total Scraped</div>
                     </div>
                     <div class="stat-card">
-                        <div class="number" id="totalProducts">0</div>
-                        <div class="label">Products Found</div>
+                        <div class="number">100%</div>
+                        <div class="label">Success Rate</div>
                     </div>
                 </div>
 
-                <div class="config-list" id="configList">
-                    <div class="loading">Loading configurations</div>
-                </div>
-
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="showAddConfigForm()">
-                        ➕ Add New Configuration
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add/Edit Configuration Modal -->
-        <div id="configModal" style="display: none;">
-            <div class="card">
-                <h2 id="modalTitle">Add Configuration</h2>
-                <div id="modalAlert"></div>
-
-                <div class="form-group">
-                    <label for="configKey">Configuration Key (e.g., "mysite")</label>
-                    <input type="text" id="configKey" placeholder="mysite" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="configName">Site Name</label>
-                    <input type="text" id="configName" placeholder="My E-commerce Site" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="configUrl">Default URL</label>
-                    <input type="url" id="configUrl" placeholder="https://example.com/products" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="scrollPasses">Scroll Passes</label>
-                    <input type="number" id="scrollPasses" value="20" min="1" max="100">
-                </div>
-
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="requiresPostcode">
-                    <label for="requiresPostcode">Requires Postcode Entry</label>
-                </div>
-
-                <div class="form-group">
-                    <label for="postcode">Postcode (if required)</label>
-                    <input type="text" id="postcode" placeholder="GL52 3DT">
-                </div>
-
-                <div class="form-group">
-                    <label for="nameXpath">Product Name XPath</label>
-                    <textarea id="nameXpath" placeholder="ancestor::div[1]//h3"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="imageXpath">Product Image XPath</label>
-                    <textarea id="imageXpath" placeholder="ancestor::div[1]//img"></textarea>
-                </div>
-
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="saveConfig()">
-                        💾 Save Configuration
-                    </button>
-                    <button class="btn btn-secondary" onclick="hideConfigForm()">
-                        ❌ Cancel
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== BOOKER CSV MAPPING SECTION ===== -->
-        <div class="card booker-card" style="margin-bottom:30px;">
-            <h2>Booker CSV Mapper</h2>
-            <p style="color:#888;font-size:.95rem;margin-bottom:24px;">
-                Upload any Booker product CSV — AI will auto-detect the columns and generate a clean
-                <strong>booker_id · product_name · price · image_url</strong> file ready for import.
-            </p>
-
-            <!-- Drop zone -->
-            <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFileInput').click()">
-                <span class="dz-icon">📁</span>
-                <p>Drop your Booker CSV here, or click to browse</p>
-                <small>Supports any CSV — AI detects columns automatically</small>
-                <div id="fileChosen"></div>
-            </div>
-            <input type="file" id="csvFileInput" accept=".csv">
-
-            <!-- Status + progress -->
-            <div id="bookerStatus" class="booker-status" style="margin-top:18px;"></div>
-            <div class="progress-bar-wrap" id="bookerProgressWrap" style="display:none;">
-                <div class="progress-bar" id="bookerProgressBar"></div>
-            </div>
-
-            <!-- Detected mapping chips -->
-            <div class="mapping-chips" id="mappingChips" style="display:none;"></div>
-
-            <!-- Preview table -->
-            <div id="bookerPreview" style="display:none;">
-                <h3 style="color:#667eea;margin-bottom:12px;font-size:1.1rem;">📋 Preview (first 10 rows)</h3>
-                <div class="preview-wrap">
-                    <div class="preview-scroll">
-                        <table class="preview-table" id="previewTable"></table>
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-top: 40px;">
+                    <div class="card">
+                        <h2><i data-lucide="rocket"></i> Get Started</h2>
+                        <p style="color: var(--text-muted); margin-bottom: 24px;">Choose a tool from the sidebar to begin processing your product data, or jump straight into the latest configuration below.</p>
+                        <div id="latestConfigDashboard">
+                            <p style="color: var(--text-dim);">Load configurations to see the latest activity.</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2><i data-lucide="help-circle"></i> Shortcuts</h2>
+                        <nav style="display: flex; flex-direction: column; gap: 12px;">
+                            <button class="btn btn-secondary" onclick="showPage('quick-scrape')"><i data-lucide="plus"></i> New Scrape</button>
+                            <button class="btn btn-secondary" onclick="showPage('image-updater')"><i data-lucide="search"></i> Enrich Images</button>
+                        </nav>
                     </div>
                 </div>
             </div>
 
-            <!-- Actions -->
-            <div class="btn-group" style="margin-top:24px;">
-                <button class="btn btn-primary" id="runMappingBtn" onclick="runBookerMapping()" style="display:none;">
-                    🤖 Detect &amp; Process with AI
-                </button>
-                <button class="btn btn-download" id="downloadBtn" onclick="downloadResult()" style="display:none;">
-                    ⬇️ Download Processed CSV
-                </button>
-                <button class="btn btn-secondary" id="resetBookerBtn" onclick="resetBooker()" style="display:none;">
-                    🔄 Reset
-                </button>
-            </div>
-
-            <div id="bookerAlert"></div>
-        </div>
-
-        <!-- ===== FLASH CSV UPDATER SECTION ===== -->
-        <div class="card" style="margin-bottom:30px;" id="flashCard">
-            <h2>⚡ Flash CSV Updater</h2>
-            <p style="color:#888;font-size:.95rem;margin-bottom:24px;">
-                Upload your <strong>Flash CSV</strong> and the <strong>Booker processed CSV</strong>.
-                Prices and images will be matched on SKU&nbsp;↔&nbsp;booker_id and merged automatically.
-            </p>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
-                <!-- Flash CSV drop -->
-                <div>
-                    <label style="font-weight:600;font-size:.9rem;display:block;margin-bottom:8px;">1️⃣ Flash CSV (the one you want to update)</label>
-                    <div class="drop-zone" id="flashDropZone" onclick="document.getElementById('flashFileInput').click()" style="padding:28px 16px;">
-                        <span class="dz-icon">📄</span>
-                        <p style="font-size:.9rem;">Drop Flash CSV or click to browse</p>
-                        <div id="flashFileChosen" style="margin-top:8px;font-size:.82rem;color:#667eea;font-weight:600;"></div>
+            <!-- QUICK SCRAPE PAGE -->
+            <div id="quick-scrape" class="page">
+                <div class="header">
+                    <h1><i data-lucide="zap"></i> Quick Scrape</h1>
+                    <p>Manage and run your scraping configurations</p>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <!-- Scrape Form -->
+                    <div class="card">
+                        <h2><i data-lucide="play"></i> Start Scraping</h2>
+                        <div id="scrapeAlert"></div>
+                        <div class="form-group">
+                            <label for="scrapeUrl">URL to Scrape</label>
+                            <input type="url" id="scrapeUrl" placeholder="https://example.com/products" required>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="headlessMode" checked>
+                            <label for="headlessMode">Run in hidden mode (headless)</label>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="startScrape()">🎯 Start Scraping</button>
+                        </div>
+                        <div id="scrapeResults" class="results-container"></div>
                     </div>
-                    <input type="file" id="flashFileInput" accept=".csv" style="display:none;">
+
+                    <!-- Configurations List -->
+                    <div class="card">
+                        <h2>Saved Configurations</h2>
+                        <div id="configAlert"></div>
+                        <div class="stats" id="statsContainer" style="display: none;">
+                            <div class="stat-card">
+                                <div class="number" id="totalConfigs">0</div>
+                                <div class="label">Configs</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="number" id="totalScrapes">0</div>
+                                <div class="label">Scrapes</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="number" id="totalProducts">0</div>
+                                <div class="label">Products</div>
+                            </div>
+                        </div>
+                        <div class="config-list" id="configList">
+                            <div class="loading">Loading configurations</div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="showAddConfigForm()">➕ Add New</button>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Booker CSV drop -->
-                <div>
-                    <label style="font-weight:600;font-size:.9rem;display:block;margin-bottom:8px;">2️⃣ Booker Processed CSV (output from Booker CSV Mapper above)</label>
-                    <div class="drop-zone" id="bookerDropZone2" onclick="document.getElementById('bookerFileInput2').click()" style="padding:28px 16px;">
-                        <span class="dz-icon">📋</span>
-                        <p style="font-size:.9rem;">Drop Booker CSV or click to browse</p>
-                        <div id="bookerFileChosen2" style="margin-top:8px;font-size:.82rem;color:#667eea;font-weight:600;"></div>
+                <!-- Modal inside page for scoping -->
+                <div id="configModal" class="modal-overlay" style="display: none;">
+                    <div class="modal-container">
+                        <div class="modal-inner">
+                            <h2 id="modalTitle"><i data-lucide="settings"></i> Add Configuration</h2>
+                            <div id="modalAlert"></div>
+                            
+                            <div class="modal-grid">
+                                <div class="form-group">
+                                    <label for="configName">Site Name</label>
+                                    <input type="text" id="configName" placeholder="e.g. Deliveroo">
+                                </div>
+                                <div class="form-group">
+                                    <label for="configKey">Configuration Key</label>
+                                    <input type="text" id="configKey" placeholder="e.g. deliveroo">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="configUrl">Target URL</label>
+                                    <input type="url" id="configUrl" placeholder="https://www.deliveroo.co.uk/...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="scrollPasses">Scroll Passes</label>
+                                    <input type="number" id="scrollPasses" value="20">
+                                </div>
+                                <div class="form-group">
+                                    <label>Location Setting</label>
+                                    <div class="checkbox-card" onclick="togglePostcode()">
+                                        <input type="checkbox" id="requiresPostcode" onclick="event.stopPropagation()">
+                                        <label for="requiresPostcode">Requires Postcode</label>
+                                    </div>
+                                </div>
+                                <div class="form-group full-width" id="postcodeGroup">
+                                    <label for="postcode">Default Postcode</label>
+                                    <input type="text" id="postcode" placeholder="GL52 3DT">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="nameXpath">Product Name XPath</label>
+                                    <textarea id="nameXpath" placeholder="//h3[contains(@class, 'name')]"></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="imageXpath">Product Image XPath</label>
+                                    <textarea id="imageXpath" placeholder="//img[contains(@class, 'product-image')]"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="btn-group" style="margin-top: 32px; justify-content: flex-end;">
+                                <button class="btn btn-secondary" onclick="hideConfigForm()">
+                                    <i data-lucide="x"></i> Cancel
+                                </button>
+                                <button class="btn btn-primary" onclick="saveConfig()">
+                                    <i data-lucide="save"></i> Save Configuration
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <input type="file" id="bookerFileInput2" accept=".csv" style="display:none;">
+                    <div style="position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1;" onclick="hideConfigForm()"></div>
                 </div>
             </div>
 
-            <!-- Status -->
-            <div id="flashStatus" style="font-size:.93rem;color:#555;margin-bottom:10px;min-height:22px;"></div>
-            <div class="progress-bar-wrap" id="flashProgressWrap" style="display:none;margin-bottom:18px;">
-                <div class="progress-bar" id="flashProgressBar"></div>
+            <!-- BOOKER CSV MAPPER PAGE -->
+            <div id="booker-mapper" class="page">
+                <div class="header">
+                    <h1><i data-lucide="file-json"></i> Booker CSV Mapper</h1>
+                    <p>Auto-detect columns and prepare Booker data for import</p>
+                </div>
+                
+                <div class="card booker-card">
+                    <h2><i data-lucide="upload-cloud"></i> Upload & Process</h2>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">
+                        Upload any Booker product CSV — AI will auto-detect columns and generate a clean
+                        <strong>booker_id · product_name · price · image_url</strong> file.
+                    </p>
+
+                    <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFileInput').click()">
+                        <span class="dz-icon">📁</span>
+                        <p>Drop your Booker CSV here, or click to browse</p>
+                        <div id="fileChosen"></div>
+                    </div>
+                    <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
+
+                    <div id="bookerStatus" class="booker-status" style="margin-top:18px;"></div>
+                    <div class="progress-bar-wrap" id="bookerProgressWrap" style="display:none;">
+                        <div class="progress-bar" id="bookerProgressBar"></div>
+                    </div>
+
+                    <div class="mapping-chips" id="mappingChips" style="display:none;"></div>
+
+                    <div id="bookerPreview" style="display:none;">
+                        <h3 style="color:#667eea;margin-bottom:12px;font-size:1.1rem;">📋 Preview (first 10 rows)</h3>
+                        <div class="preview-wrap">
+                            <div class="preview-scroll">
+                                <table class="preview-table" id="previewTable"></table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group" style="margin-top:24px;">
+                        <button class="btn btn-primary" id="runMappingBtn" onclick="runBookerMapping()" style="display:none;">🤖 Detect & Process with AI</button>
+                        <button class="btn btn-download" id="downloadBtn" onclick="downloadResult()" style="display:none;">⬇️ Download Processed CSV</button>
+                        <button class="btn btn-secondary" id="resetBookerBtn" onclick="resetBooker()" style="display:none;">🔄 Reset</button>
+                    </div>
+                    <div id="bookerAlert"></div>
+                </div>
             </div>
 
-            <!-- Actions -->
-            <div class="btn-group">
-                <button class="btn btn-primary" id="runFlashBtn" onclick="runFlashUpdate()" disabled>
-                    ⚡ Merge & Download Updated Flash CSV
-                </button>
-                <button class="btn btn-secondary" onclick="resetFlash()">🔄 Reset</button>
+            <!-- FLASH CSV UPDATER PAGE -->
+            <div id="flash-updater" class="page">
+                <div class="header">
+                    <h1><i data-lucide="refresh-cw"></i> Flash CSV Updater</h1>
+                    <p>Merge Booker prices and images into Flash CSV</p>
+                </div>
+                
+                <div class="card" id="flashCard">
+                    <h2><i data-lucide="layers"></i> Merge & Update</h2>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">
+                        Upload your <strong>Flash CSV</strong> and the <strong>Booker processed CSV</strong>.
+                        Prices and images will be matched on SKU&nbsp;↔&nbsp;booker_id and merged automatically.
+                    </p>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+                        <div>
+                            <label style="font-weight:600;font-size:.9rem;display:block;margin-bottom:8px;">1️⃣ Flash CSV</label>
+                            <div class="drop-zone" id="flashDropZone" onclick="document.getElementById('flashFileInput').click()" style="padding:28px 16px;">
+                                <span class="dz-icon">📄</span>
+                                <p style="font-size:.9rem;">Drop Flash CSV or click to browse</p>
+                                <div id="flashFileChosen" style="margin-top:8px;font-size:.82rem;color:#667eea;font-weight:600;"></div>
+                            </div>
+                            <input type="file" id="flashFileInput" accept=".csv" style="display:none;">
+                        </div>
+                        <div>
+                            <label style="font-weight:600;font-size:.9rem;display:block;margin-bottom:8px;">2️⃣ Booker Processed CSV</label>
+                            <div class="drop-zone" id="bookerDropZone2" onclick="document.getElementById('bookerFileInput2').click()" style="padding:28px 16px;">
+                                <i data-lucide="file-up"></i>
+                                <p style="font-size:.9rem;">Drop Booker CSV or click to browse</p>
+                                <div id="bookerFileChosen2" style="margin-top:8px;font-size:.82rem;color:#667eea;font-weight:600;"></div>
+                            </div>
+                            <input type="file" id="bookerFileInput2" accept=".csv" style="display:none;">
+                        </div>
+                    </div>
+
+                    <div id="flashStatus" style="font-size:.93rem;color:#555;margin-bottom:10px;min-height:22px;"></div>
+                    <div class="progress-bar-wrap" id="flashProgressWrap" style="display:none;margin-bottom:18px;">
+                        <div class="progress-bar" id="flashProgressBar"></div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="runFlashBtn" onclick="runFlashUpdate()" disabled>⚡ Merge & Download</button>
+                        <button class="btn btn-secondary" onclick="resetFlash()">🔄 Reset</button>
+                    </div>
+                    <div id="flashAlert" style="margin-top:14px;"></div>
+                </div>
             </div>
 
-            <div id="flashAlert" style="margin-top:14px;"></div>
-        </div>
-    </div>
+            <!-- IMAGE URL UPDATER PAGE -->
+            <div id="image-updater" class="page">
+                <div class="header">
+                    <h1>🔍 Image URL Updater</h1>
+                    <p style="color: rgba(255,255,255,0.7); margin-top: 5px;">Enrich CSV product data with images via SerpAPI</p>
+                </div>
+                
+                <div class="card" id="imageUrlCard">
+                    <p style="color:#888;font-size:.95rem;margin-bottom:24px;">
+                        Upload any CSV that has a <strong>Product Name</strong> column.
+                        SerpAPI Google Images will be queried for every product and the
+                        <strong>image_url</strong> column will be filled automatically.
+                    </p>
+
+                    <div class="drop-zone" id="imgUrlDropZone" onclick="document.getElementById('imgUrlFileInput').click()">
+                        <i data-lucide="image-plus"></i>
+                        <p>Drop your CSV here, or click to browse</p>
+                        <small>Any CSV with a product name column — image_url will be filled</small>
+                        <div id="imgUrlFileChosen"></div>
+                    </div>
+                    <input type="file" id="imgUrlFileInput" accept=".csv" style="display:none;">
+
+                    <div id="imgUrlStatus" class="booker-status" style="margin-top:18px;"></div>
+                    <div class="progress-bar-wrap" id="imgUrlProgressWrap" style="display:none;">
+                        <div class="progress-bar" id="imgUrlProgressBar"></div>
+                    </div>
+
+                    <div id="imgUrlSelectionGallery" style="display:none;" class="selection-scroll"></div>
+
+                    <div class="btn-group" style="margin-top:24px;">
+                        <button class="btn btn-primary" id="imgUrlRunBtn" onclick="runImageUrlUpdate()" style="display:none;">🔍 Fetch Image Candidates</button>
+                        <button class="btn btn-secondary" id="imgUrlResetBtn" onclick="resetImageUrlUpdater()" style="display:none;">🔄 Reset</button>
+                    </div>
+                    <div id="imgUrlAlert" style="margin-top:14px;"></div>
+                </div>
+            </div>
+        </div> <!-- container end -->
+    </div> <!-- main-content end -->
 
     <script>
         const API_BASE = 'http://127.0.0.1:8000';
         let totalScrapes = 0;
 
-        // ===== BOOKER CSV MAPPER =====
+        // ===== ROUTING =====
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            // Show target page
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                // Highlight nav item
+                const navItem = document.querySelector(`.nav-item[href=\"#${pageId}\"]`);
+                if (navItem) navItem.classList.add('active');
+            }
+            
+            // Re-initialize icons in case new ones were added via JS
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // Handle browser hash changes
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.replace('#', '') || 'dashboard';
+            showPage(hash);
+        });
+
+        // Initial load
+        window.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash.replace('#', '') || 'dashboard';
+            showPage(hash);
+            loadConfigurations();
+            if (window.lucide) lucide.createIcons();
+        });
         let bookerFile = null;
         let bookerResult = null;
 
@@ -896,10 +1131,8 @@
         // =============================
         let totalProducts = 0;
 
-        // Load configurations on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            loadConfigurations();
-        });
+        // Initialize configurations elsewhere or rely on the primary DOMContentLoaded listener.
+        // loadConfigurations() is already called in the primary routing block above.
 
         async function loadConfigurations() {
             try {
@@ -908,32 +1141,61 @@
                 
                 const configList = document.getElementById('configList');
                 const configs = data.sites;
+                const configKeys = Object.keys(configs);
                 
-                if (Object.keys(configs).length === 0) {
+                // Update Dashboard & Sidebar Stats
+                const totalConfigs = configKeys.length;
+                document.getElementById('totalConfigs').textContent = totalConfigs;
+                document.getElementById('stat-total-configs').textContent = totalConfigs;
+                document.getElementById('stat-total-scrapes').textContent = totalScrapes;
+                
+                if (totalConfigs === 0) {
                     configList.innerHTML = '<div class="empty-state">No configurations yet. Add your first one!</div>';
+                    document.getElementById('latestConfigDashboard').innerHTML = '<p style=\"color: var(--text-dim);\">Add a configuration to see latest activity.</p>';
                     return;
                 }
 
-                document.getElementById('totalConfigs').textContent = Object.keys(configs).length;
+                // Show stats panel in Quick Scrape
                 document.getElementById('statsContainer').style.display = 'grid';
 
+                // Populate Config List
                 configList.innerHTML = Object.entries(configs).map(([key, config]) => `
                     <div class="config-item">
                         <h3>${config.name}</h3>
                         <p><strong>Key:</strong> ${key}</p>
                         <p class="url"><strong>URL:</strong> ${config.url || 'N/A'}</p>
-                        <p><strong>Scroll Passes:</strong> ${config.scroll_passes || 20}</p>
-                        <p><strong>Requires Postcode:</strong> ${config.requires_postcode ? 'Yes' : 'No'}</p>
+                        <p><strong>Scroll:</strong> ${config.scroll_passes || 20} passes</p>
                         <div class="config-actions">
-                            <button class="btn btn-success" onclick="scrapeConfig('${key}')">
-                                🎯 Scrape
+                            <button class="btn btn-primary" onclick="scrapeConfig('${key}')">
+                                <i data-lucide="play-circle"></i> Run
                             </button>
-                            <button class="btn btn-danger" onclick="deleteConfig('${key}')">
-                                🗑️ Delete
+                            <button class="btn btn-secondary btn-sm" onclick="editConfig('${key}')">
+                                <i data-lucide="edit-3"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteConfig('${key}')">
+                                <i data-lucide="trash-2"></i>
                             </button>
                         </div>
                     </div>
                 `).join('');
+
+                // Populate Latest Dashboard Activity
+                const latestKey = configKeys[configKeys.length - 1];
+                const latest = configs[latestKey];
+                document.getElementById('latestConfigDashboard').innerHTML = `
+                    <div style=\"display: flex; justify-content: space-between; align-items: center;\">
+                        <div>
+                            <h3 style=\"color: white; margin-bottom: 4px;\">${latest.name}</h3>
+                            <p style=\"color: var(--primary); font-size: 0.85rem;\">${latest.url}</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="scrapeConfig('${latestKey}')">
+                            <i data-lucide="zap"></i> Quick Run
+                        </button>
+                    </div>
+                `;
+                
+                if (window.lucide) lucide.createIcons();
+
             } catch (error) {
                 showAlert('configAlert', 'Failed to load configurations: ' + error.message, 'error');
             }
@@ -1029,10 +1291,48 @@
             `;
         }
 
+        async function editConfig(key) {
+            try {
+                const response = await fetch(`${API_BASE}/sites`);
+                const data = await response.json();
+                const config = data.sites[key];
+                
+                if (!config) return;
+
+                document.getElementById('configModal').style.display = 'flex';
+                document.getElementById('modalTitle').innerHTML = '<i data-lucide="edit"></i> Edit Configuration';
+                
+                document.getElementById('configKey').value = key;
+                document.getElementById('configKey').readOnly = true; // Key cannot be changed
+                document.getElementById('configName').value = config.name;
+                document.getElementById('configUrl').value = config.url;
+                document.getElementById('scrollPasses').value = config.scroll_passes || 20;
+                
+                const requiresPostcode = config.requires_postcode || false;
+                document.getElementById('requiresPostcode').checked = requiresPostcode;
+                document.getElementById('postcodeGroup').style.display = requiresPostcode ? 'block' : 'none';
+                document.getElementById('postcode').value = config.postcode || '';
+                
+                document.getElementById('nameXpath').value = config.extraction?.name?.xpath || '';
+                document.getElementById('imageXpath').value = config.extraction?.image?.xpath || '';
+                
+                if (window.lucide) lucide.createIcons();
+            } catch (error) {
+                showAlert('configAlert', 'Error loading config: ' + error.message, 'error');
+            }
+        }
+
         function showAddConfigForm() {
-            document.getElementById('configModal').style.display = 'block';
-            document.getElementById('modalTitle').textContent = 'Add New Configuration';
+            document.getElementById('configModal').style.display = 'flex';
+            document.getElementById('modalTitle').innerHTML = '<i data-lucide="plus-circle"></i> Add New Configuration';
             clearConfigForm();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function togglePostcode() {
+            const cb = document.getElementById('requiresPostcode');
+            cb.checked = !cb.checked;
+            document.getElementById('postcodeGroup').style.display = cb.checked ? 'block' : 'none';
         }
 
         function hideConfigForm() {
@@ -1042,6 +1342,7 @@
 
         function clearConfigForm() {
             document.getElementById('configKey').value = '';
+            document.getElementById('configKey').readOnly = false;
             document.getElementById('configName').value = '';
             document.getElementById('configUrl').value = '';
             document.getElementById('scrollPasses').value = '20';
@@ -1050,6 +1351,7 @@
             document.getElementById('nameXpath').value = '';
             document.getElementById('imageXpath').value = '';
             document.getElementById('modalAlert').innerHTML = '';
+            document.getElementById('postcodeGroup').style.display = 'none';
         }
 
         async function saveConfig() {
@@ -1232,6 +1534,214 @@
             document.getElementById('flashProgressBar').style.width = '0%';
             document.getElementById('flashAlert').innerHTML = '';
             document.getElementById('runFlashBtn').disabled = true;
+        }
+
+        // ===== IMAGE URL UPDATER (INTERACTIVE) =====
+        let imgUrlFile = null;
+        let currentCsvData = null;
+        let currentCandidates = null;
+        let currentSelections = {}; // index -> selected_url
+
+        const imgUrlDropZone = document.getElementById('imgUrlDropZone');
+
+        ['dragenter','dragover'].forEach(evt => imgUrlDropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            imgUrlDropZone.classList.add('drag-over');
+        }));
+
+        ['dragleave','dragend','drop'].forEach(evt => imgUrlDropZone.addEventListener(evt, e => {
+            imgUrlDropZone.classList.remove('drag-over');
+        }));
+
+        imgUrlDropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            const f = e.dataTransfer.files[0];
+            if (f && f.name.endsWith('.csv')) selectImgUrlFile(f);
+            else showAlert('imgUrlAlert', '⚠️ Please drop a CSV file.', 'error');
+        });
+
+        document.getElementById('imgUrlFileInput').addEventListener('change', e => {
+            if (e.target.files[0]) selectImgUrlFile(e.target.files[0]);
+        });
+
+        function selectImgUrlFile(file) {
+            imgUrlFile = file;
+            document.getElementById('imgUrlFileChosen').innerHTML =
+                `<span class="file-chosen">📄 ${file.name} <span style="opacity:.6;font-weight:400;">(${(file.size/1024).toFixed(1)} KB)</span></span>`;
+            document.getElementById('imgUrlRunBtn').style.display = 'inline-flex';
+            document.getElementById('imgUrlResetBtn').style.display = 'inline-flex';
+            document.getElementById('imgUrlRunBtn').textContent = '🔍 Fetch Image Candidates';
+            document.getElementById('imgUrlRunBtn').onclick = runImageUrlUpdate;
+            document.getElementById('imgUrlStatus').textContent = 'File ready — click to search for candidates.';
+            document.getElementById('imgUrlAlert').innerHTML = '';
+            document.getElementById('imgUrlSelectionGallery').style.display = 'none';
+            document.getElementById('imgUrlSelectionGallery').innerHTML = '';
+        }
+
+        async function runImageUrlUpdate() {
+            if (!imgUrlFile) return;
+            const btn = document.getElementById('imgUrlRunBtn');
+            btn.disabled = true;
+            document.getElementById('imgUrlAlert').innerHTML = '';
+            document.getElementById('imgUrlProgressWrap').style.display = 'block';
+            document.getElementById('imgUrlProgressBar').style.width = '15%';
+            document.getElementById('imgUrlStatus').textContent = '🔍 Fetching top 10 results from Google for each product…';
+
+            try {
+                const fd = new FormData();
+                fd.append('file', imgUrlFile);
+
+                // Animate progress while waiting
+                let pct = 15;
+                const ticker = setInterval(() => {
+                    pct = Math.min(pct + 5, 95);
+                    document.getElementById('imgUrlProgressBar').style.width = pct + '%';
+                }, 2000);
+
+                const res = await fetch(`${API_BASE}/get-image-candidates`, {
+                    method: 'POST',
+                    body: fd
+                });
+
+                clearInterval(ticker);
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Server error');
+                }
+
+                const data = await res.json();
+                currentCsvData = data.csv_data;
+                currentCandidates = data.candidates;
+                currentSelections = {}; // Reset
+
+                document.getElementById('imgUrlProgressBar').style.width = '100%';
+                document.getElementById('imgUrlStatus').textContent = `✅ Found candidates for ${currentCandidates.length} products. Select the images you want below.`;
+                
+                renderSelectionGallery(data.product_col);
+
+                // Update button to Finalize
+                btn.textContent = '💾 Finalize & Download CSV';
+                btn.onclick = finalizeInteractiveSelection;
+                btn.disabled = false;
+
+            } catch (err) {
+                document.getElementById('imgUrlProgressBar').style.width = '0%';
+                document.getElementById('imgUrlStatus').textContent = '';
+                showAlert('imgUrlAlert', '❌ ' + err.message, 'error');
+                btn.disabled = false;
+            }
+        }
+
+        function renderSelectionGallery(nameCol) {
+            const container = document.getElementById('imgUrlSelectionGallery');
+            container.innerHTML = '';
+            container.style.display = 'block';
+
+            currentCsvData.forEach((row, idx) => {
+                const candidates = currentCandidates[idx];
+                const productName = row[nameCol] || 'Unknown Product';
+                
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'product-selection-row';
+                
+                const title = document.createElement('h4');
+                title.textContent = `${idx + 1}. ${productName}`;
+                rowDiv.appendChild(title);
+
+                const strip = document.createElement('div');
+                strip.className = 'candidate-strip';
+
+                if (!candidates || candidates.length === 0) {
+                    strip.innerHTML = '<p style="color:#999;font-size:0.85rem;">No images found for this product.</p>';
+                } else {
+                    candidates.forEach(cand => {
+                        const item = document.createElement('div');
+                        item.className = 'candidate-item';
+                        item.onclick = () => selectImage(idx, cand.original, item);
+                        
+                        const img = document.createElement('img');
+                        img.src = cand.thumbnail;
+                        img.loading = 'lazy';
+                        
+                        const check = document.createElement('div');
+                        check.className = 'check';
+                        check.innerHTML = '✔';
+
+                        item.appendChild(img);
+                        item.appendChild(check);
+                        strip.appendChild(item);
+                    });
+                }
+
+                rowDiv.appendChild(strip);
+                container.appendChild(rowDiv);
+            });
+        }
+
+        function selectImage(productIdx, url, element) {
+            // Unselect others in the same strip
+            const strip = element.parentElement;
+            strip.querySelectorAll('.candidate-item').forEach(el => el.classList.remove('selected'));
+            
+            // Select this one
+            element.classList.add('selected');
+            currentSelections[productIdx] = url;
+        }
+
+        async function finalizeInteractiveSelection() {
+            const btn = document.getElementById('imgUrlRunBtn');
+            btn.disabled = true;
+            document.getElementById('imgUrlStatus').textContent = '📝 Merging selections and generating CSV…';
+
+            try {
+                const res = await fetch(`${API_BASE}/finalize-csv-interactive`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        csv_data: currentCsvData,
+                        selections: currentSelections
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Finalization failed');
+                }
+
+                // Auto-download
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'serp_updated_products.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                document.getElementById('imgUrlStatus').textContent = '✅ Success! updated_products.csv downloaded.';
+                
+            } catch (err) {
+                showAlert('imgUrlAlert', '❌ ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function resetImageUrlUpdater() {
+            imgUrlFile = null;
+            currentCsvData = null;
+            currentCandidates = null;
+            currentSelections = {};
+            document.getElementById('imgUrlFileInput').value = '';
+            document.getElementById('imgUrlFileChosen').innerHTML = '';
+            document.getElementById('imgUrlStatus').textContent = '';
+            document.getElementById('imgUrlProgressWrap').style.display = 'none';
+            document.getElementById('imgUrlProgressBar').style.width = '0%';
+            document.getElementById('imgUrlAlert').innerHTML = '';
+            document.getElementById('imgUrlRunBtn').style.display = 'none';
+            document.getElementById('imgUrlResetBtn').style.display = 'none';
+            document.getElementById('imgUrlSelectionGallery').style.display = 'none';
+            document.getElementById('imgUrlSelectionGallery').innerHTML = '';
         }
     </script>
 </body>

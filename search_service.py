@@ -1,9 +1,10 @@
 import requests
-import time
+import asyncio
 import pandas as pd
 import logging
 from typing import List, Dict
 from ai_mapper import detect_columns_with_ai
+from caching_service import get_cached_images, save_cached_images
 
 # Configure logging for the service
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ def is_multipack(product: str) -> bool:
     keywords = ["pack", "bundle", "combo", "set"]
     return any(k in product.lower() for k in keywords)
 
-def google_image_search(query: str, max_results: int = 15) -> List[Dict]:
+async def google_image_search(query: str, max_results: int = 15) -> List[Dict]:
     logger.info(f"Searching Google Images for: '{query}'")
     images = []
     start = 1
@@ -33,8 +34,9 @@ def google_image_search(query: str, max_results: int = 15) -> List[Dict]:
         }
 
         try:
-            r = requests.get(url, params=params).json()
-            logger.info(f"r is here {r}")
+            # Use asyncio.to_thread for requests if not using httpx
+            r_resp = await asyncio.to_thread(requests.get, url, params=params)
+            r = r_resp.json()
             items = r.get("items", [])
 
             if not items:
@@ -51,16 +53,22 @@ def google_image_search(query: str, max_results: int = 15) -> List[Dict]:
 
             logger.info(f"Found {len(items)} items in current page. Total so far: {len(images)}")
             start += 10
-            time.sleep(0.5)
+            await asyncio.sleep(0.5)
         except Exception as e:
             logger.error(f"Error during Google Image search: {e}")
             break
 
     return images
 
-def find_product_image(product: str, top_n: int = 5) -> List[str]:
-    product_name = str(product)
+async def find_product_image(product: str, top_n: int = 5) -> List[str]:
+    product_name = str(product).strip()
     logger.info(f"find product image {product_name}")
+    
+    # 1. Check Cache/DB first
+    cached = await get_cached_images(product_name)
+    if cached:
+        return cached[:top_n]
+
     candidates = []
     multipack = is_multipack(product_name)
 
@@ -68,7 +76,7 @@ def find_product_image(product: str, top_n: int = 5) -> List[str]:
     logger.info(f"Beginning search for product: '{product_name}' (Multipack: {multipack})")
     
     try:
-        results = google_image_search(query, max_results=15)
+        results = await google_image_search(query, max_results=15)
         scored_results = []
         product_keywords = set(product_name.lower().split())
 
@@ -111,8 +119,11 @@ def find_product_image(product: str, top_n: int = 5) -> List[str]:
                 if url not in seen_urls:
                     candidates.append(url)
                     seen_urls.add(url)
-                    if len(candidates) >= top_n:
+                    if len(candidates) >= 10: # Store more than top_n for thorough caching
                         break
+            
+            # 2. Save to Cache/DB
+            await save_cached_images(product_name, candidates)
             
             logger.info(f"Found {len(candidates)} candidates for '{product_name}'. Best score: {scored_results[0][0]}")
         else:
@@ -121,11 +132,10 @@ def find_product_image(product: str, top_n: int = 5) -> List[str]:
     except Exception as e:
         logger.error(f"Error searching for {product_name}: {e}")
 
-    return candidates
+    return candidates[:top_n]
 
-def process_products_csv(input_df: pd.DataFrame) -> pd.DataFrame:
+async def process_products_csv(input_df: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"Starting batch processing of {len(input_df)} products")
-    logger.info(f"input_df is here {input_df}")
     results_data = []
 
     # Use AI to detect column names
@@ -152,7 +162,7 @@ def process_products_csv(input_df: pd.DataFrame) -> pd.DataFrame:
 
     for i, product in enumerate(input_df[product_col], start=1):
         logger.info(f"Processing product {i}/{len(input_df)}: {product}")
-        candidates = find_product_image(product)
+        candidates = await find_product_image(product)
         
         results_data.append({
             "product": product,
