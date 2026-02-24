@@ -637,52 +637,57 @@ class FinalizeSelection(BaseModel):
 
 async def _serpapi_image_candidates(product_name: str, max_candidates: int = 10) -> List[Dict[str, str]]:
     """
-    Search Google Images via SerpAPI and return top 10 candidates.
+    Search Google Images via Serper.dev and return top candidates.
     Each candidate has: thumbnail, original
     """
-    api_key = os.getenv("SERPAPI_KEY", "")
-    if not api_key or api_key == "secret_api_key":
-        logger.warning("SERPAPI_KEY not set — skipping image search")
+    import requests as req
+
+    api_key = os.getenv("SERPER_API_KEY", "ae93ba8c6bcba3f9978cea00e0499fa86edd7979")
+    if not api_key:
+        logger.warning("SERPER_API_KEY not set — skipping image search")
         return []
+
     try:
-        from serpapi import GoogleSearch
-        params = {
-            "engine": "google_images",
-            "google_domain": "google.com",
-            "q": product_name,
-            "hl": "en",
-            "gl": "us",
-            "api_key": api_key,
+        url = "https://google.serper.dev/images"
+        payload = {"q": product_name}
+        headers = {
+            "X-API-KEY": api_key,
+            "Content-Type": "application/json",
         }
-        
-        # SerpAPI's GoogleSearch.get_dict() is blocking, so run in thread
-        search = GoogleSearch(params)
-        results = await asyncio.to_thread(search.get_dict)
-        images = results.get("images_results", [])
-        
+
+        # requests.post is blocking, so run in thread
+        resp = await asyncio.to_thread(req.post, url, headers=headers, json=payload, timeout=15)
+        data = resp.json()
+
+        logger.info(f"Serper response keys: {list(data.keys())} for '{product_name}'")
+
+        images = data.get("images", [])
+        logger.info(f"Serper returned {len(images)} images for '{product_name}'")
+
         candidates = []
-        for img in images[:max_candidates]:
-            url = img.get("original") or img.get("thumbnail", "")
-            if url and url.startswith("http"):
-                candidates.append({
-                    "original": url,
-                    "thumbnail": img.get("thumbnail", url)
-                })
         
-        # Save to Cache/DB
-        await save_cached_images(product_name, candidates, prefix="serpapi")
+        for img in images[:max_candidates]:
+            original = img.get("imageUrl", "")
+            thumbnail = img.get("thumbnailUrl", original)
+            if original and original.startswith("http"):
+                candidates.append({
+                    "original": original,
+                    "thumbnail": thumbnail,
+                })
+
         return candidates
     except Exception as e:
-        logger.warning(f"SerpAPI search failed for '{product_name}': {e}")
+        logger.warning(f"Serper image search failed for '{product_name}': {e}")
     return []
 
 
 @app.post("/get-image-candidates")
 async def get_image_candidates(file: UploadFile = File(...)):
     """
-    Step 1: Upload CSV and fetch top 10 image candidates for each product.
+    Upload CSV and fetch top 10 image candidates for each product.
     Returns: { "csv_data": [...], "candidates": [[cand1, cand2, ...], ...] }
     """
+
     logger.info(f"get-image-candidates: received '{file.filename}'")
 
     if not file.filename.endswith(".csv"):
@@ -695,7 +700,7 @@ async def get_image_candidates(file: UploadFile = File(...)):
         if df.empty:
             raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
 
-        # ── Detect product-name column ──────────────────────────────────────
+        # ── Detect product-name column ──────────────────────────────
         product_col = None
         try:
             detected = detect_columns_with_ai(df)
@@ -708,35 +713,20 @@ async def get_image_candidates(file: UploadFile = File(...)):
                 if "product" in col.lower() and "name" in col.lower():
                     product_col = col
                     break
+
             if not product_col:
                 product_col = df.columns[0]
 
-        # ── Check Cache/DB first ──
+        # ── Direct SerpAPI Lookups (No Cache / No DB) ───────────────
         product_names = df[product_col].fillna("").astype(str).tolist()
-        all_candidates = []
-        to_search = []
-        search_indices = []
+        logger.info(f"Product names 11: {product_names}")
+        tasks = [
+            _serpapi_image_candidates(name)
+            for name in product_names
+        ]
 
-        for idx, name in enumerate(product_names):
-            cached = await get_cached_images(name, prefix="serpapi")
-            if cached:
-                all_candidates.append(cached)
-            else:
-                all_candidates.append(None) # Placeholder
-                to_search.append(name)
-                search_indices.append(idx)
-
-        # ── Parallel SerpAPI lookups for non-cached ──
-        if to_search:
-            # Call the async function directly
-            new_tasks = [
-                _serpapi_image_candidates(name)
-                for name in to_search
-            ]
-            fresh_results = await asyncio.gather(*new_tasks)
-            
-            for idx, result in zip(search_indices, fresh_results):
-                all_candidates[idx] = result
+        all_candidates = await asyncio.gather(*tasks)
+        logger.info(f"All candidates 11: {all_candidates}")
 
         return {
             "csv_data": df.fillna("").to_dict(orient="records"),
@@ -747,6 +737,77 @@ async def get_image_candidates(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Error in get-image-candidates: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+# @app.post("/get-image-candidates")
+# async def get_image_candidates(file: UploadFile = File(...)):
+#     """
+#     Step 1: Upload CSV and fetch top 10 image candidates for each product.
+#     Returns: { "csv_data": [...], "candidates": [[cand1, cand2, ...], ...] }
+#     """
+#     logger.info(f"get-image-candidates: received '{file.filename}'")
+
+#     if not file.filename.endswith(".csv"):
+#         raise HTTPException(status_code=400, detail="Please upload a CSV file.")
+
+#     try:
+#         contents = await file.read()
+#         df = pd.read_csv(io.BytesIO(contents))
+
+#         if df.empty:
+#             raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
+
+#         # ── Detect product-name column ──────────────────────────────────────
+#         product_col = None
+#         try:
+#             detected = detect_columns_with_ai(df)
+#             product_col = detected.get("product_name")
+#         except Exception as ai_err:
+#             logger.warning(f"AI column detection failed: {ai_err}")
+
+#         if not product_col or product_col not in df.columns:
+#             for col in df.columns:
+#                 if "product" in col.lower() and "name" in col.lower():
+#                     product_col = col
+#                     break
+#             if not product_col:
+#                 product_col = df.columns[0]
+
+#         # ── Check Cache/DB first ──
+#         product_names = df[product_col].fillna("").astype(str).tolist()
+#         all_candidates = []
+#         to_search = []
+#         search_indices = []
+
+#         for idx, name in enumerate(product_names):
+#             cached = await get_cached_images(name, prefix="serpapi")
+#             if cached:
+#                 all_candidates.append(cached)
+#             else:
+#                 all_candidates.append(None) # Placeholder
+#                 to_search.append(name)
+#                 search_indices.append(idx)
+
+#         # ── Parallel SerpAPI lookups for non-cached ──
+#         if to_search:
+#             # Call the async function directly
+#             new_tasks = [
+#                 _serpapi_image_candidates(name)
+#                 for name in to_search
+#             ]
+#             fresh_results = await asyncio.gather(*new_tasks)
+            
+#             for idx, result in zip(search_indices, fresh_results):
+#                 all_candidates[idx] = result
+
+#         return {
+#             "csv_data": df.fillna("").to_dict(orient="records"),
+#             "candidates": all_candidates,
+#             "product_col": product_col
+#         }
+
+#     except Exception as e:
+#         logger.error(f"Error in get-image-candidates: {e}", exc_info=True)
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/finalize-csv-interactive")
