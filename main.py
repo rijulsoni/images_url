@@ -634,6 +634,7 @@ async def update_flash_csv(
 class FinalizeSelection(BaseModel):
     csv_data: List[dict]
     selections: Dict[int, str]  # index -> selected_url
+    enhance_flags: Optional[Dict[int, bool]] = None # index -> should_enhance
 
 async def _serpapi_image_candidates(product_name: str, max_candidates: int = 10) -> List[Dict[str, str]]:
     """
@@ -813,7 +814,8 @@ async def get_image_candidates(file: UploadFile = File(...)):
 @app.post("/finalize-csv-interactive")
 async def finalize_csv_interactive(data: FinalizeSelection):
     """
-    Step 2: Merge user selections into the CSV data and return the file for download.
+    Step 2: Merge user selections into the CSV data, process enhancements if flagged,
+    and return the file for download.
     """
     try:
         df = pd.DataFrame(data.csv_data)
@@ -821,11 +823,29 @@ async def finalize_csv_interactive(data: FinalizeSelection):
         if "image_url" not in df.columns:
             df["image_url"] = ""
 
+        enhance_flags = data.enhance_flags or {}
+
         # Update image_url column based on user selections
         for idx_str, selected_url in data.selections.items():
             idx = int(idx_str)
             if idx < len(df):
-                df.at[idx, "image_url"] = selected_url
+                final_url = selected_url
+                
+                # Check if this image needs enhancement
+                if enhance_flags.get(idx_str, False) or enhance_flags.get(idx, False):
+                    logger.info(f"Enhancement requested for index {idx} with URL {selected_url}")
+                    try:
+                        # Call the enhance function logic directly
+                        req = EnhanceImageRequest(image_url=selected_url)
+                        enhance_result = await enhance_image(req)
+                        if enhance_result.get("success"):
+                            final_url = enhance_result.get("enhanced_url", selected_url)
+                    except Exception as e:
+                        logger.error(f"Failed to enhance image at index {idx}: {e}")
+                        # Fallback to original if enhancement fails
+                        final_url = selected_url
+
+                df.at[idx, "image_url"] = final_url
 
         buf = io.BytesIO()
         df.to_csv(buf, index=False)
@@ -841,3 +861,134 @@ async def finalize_csv_interactive(data: FinalizeSelection):
         logger.error(f"Error in finalize-csv-interactive: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class EnhanceImageRequest(BaseModel):
+    image_url: str
+
+@app.post("/enhance-image")
+async def enhance_image(request: EnhanceImageRequest):
+    """
+    Download the image from the given URL, enhance it using Gemini API,
+    and upload the enhanced version to S3. Return the new S3 URL.
+    """
+    import requests
+    from io import BytesIO
+
+    logger.info(f"Enhance image requested for URL: {request.image_url}")
+
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+
+        # --- Add this temporary debug line ---
+        if api_key:
+            logger.info(f"DEBUG: Key length is {len(api_key)}. Starts with: '{api_key[:5]}', ends with: '{api_key[-3:]}'")
+        if not api_key:
+            logger.warning("GEMINI_API_KEY is missing from environment variables.")
+            # Fallback or error based on your preference. Returning placeholder for now.
+            return {"success": True, "enhanced_url": request.image_url, "message": "API key missing. Returning original."}
+
+        # Download the original image
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)",
+        }
+        resp = requests.get(request.image_url, headers=headers, timeout=20)
+        
+        if resp.status_code != 200:
+            logger.warning(f"Failed to fetch image for enhancement ({resp.status_code}): {request.image_url}")
+            raise HTTPException(status_code=400, detail=f"Failed to download image from URL. Status Code: {resp.status_code}")
+
+        # Get the original image bytes directly
+        image_bytes = resp.content
+        logger.info(f"Image bytes: {image_bytes}")
+        mime_type = resp.headers.get("Content-Type", "image/jpeg")
+
+        logger.info("Calling Gemini API to enhance image...")
+        
+        try:
+            from google import genai
+            from google.genai import types
+        except ModuleNotFoundError as import_error:
+            logger.error("google-genai SDK is not installed. Install it with: pip install google-genai")
+            raise HTTPException(
+                status_code=500,
+                detail="google-genai SDK is not installed. Run 'pip install google-genai'.",
+            ) from import_error
+        import urllib.parse
+        import time
+        client = genai.Client(api_key=api_key)
+        
+        model = "gemini-2.5-flash-image"
+        contents = [
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    types.Part.from_text(text="Enhance this image: significantly improve quality, make it high resolution, sharp, and vibrant. Follow the original image closely. Output only the enhanced image."),
+                ],
+            ),
+        ]
+        generate_content_config = types.GenerateContentConfig(
+            response_modalities=["IMAGE", "TEXT"],
+        )
+
+        generated_image_bytes = None
+        for chunk in client.models.generate_content_stream(
+            model=model,
+            contents=contents,
+            config=generate_content_config,
+        ):
+            if chunk.parts is None:
+                continue
+            if chunk.parts[0].inline_data and chunk.parts[0].inline_data.data:
+                generated_image_bytes = chunk.parts[0].inline_data.data
+                break
+        
+        if not generated_image_bytes:
+            logger.error("Gemini API did not return an image.")
+            raise Exception("Gemini API did not return an image.")
+
+        # Save to buffer for S3
+        output_buffer = BytesIO(generated_image_bytes)
+        
+        # --- Upload to S3 ---
+        bucket = os.getenv("S3_BUCKET_NAME")
+        region = os.getenv("AWS_REGION", "eu-west-1")
+        
+        parsed = urllib.parse.urlparse(request.image_url)
+        original_filename = os.path.basename(parsed.path)
+        if not original_filename:
+            original_filename = "image"
+        
+        name, _ = os.path.splitext(original_filename)
+        timestamp = int(time.time())
+        filename = f"{name}_enhanced_{timestamp}.jpg"
+        s3_key = f"enhanced-images/{filename}"
+
+        s3 = _get_s3()
+        content_type = "image/jpeg"
+        
+        presigned_url = s3.generate_presigned_url(
+            'put_object',
+            Params={'Bucket': bucket, 'Key': s3_key, 'ContentType': content_type},
+            ExpiresIn=300
+        )
+        
+        upload_resp = requests.put(
+            presigned_url,
+            data=output_buffer.getvalue(),
+            headers={"Content-Type": content_type}
+        )
+
+        if upload_resp.status_code == 200:
+            enhanced_url = f"https://{bucket}.s3.{region}.amazonaws.com/{s3_key}"
+            logger.info(f"Successfully enhanced and uploaded image to S3: {enhanced_url}")
+            return {"success": True, "enhanced_url": enhanced_url}
+        else:
+            logger.error(f"Failed to upload enhanced image to S3: Status {upload_resp.status_code}")
+            raise HTTPException(status_code=500, detail="Failed to upload enhanced image to S3")
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error in enhance_image: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

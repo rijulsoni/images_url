@@ -507,25 +507,27 @@
         }
 
         .candidate-item {
-            flex: 0 0 120px;
-            height: 120px;
-            border-radius: 8px;
+            flex: 0 0 180px;
+            height: 180px;
+            border-radius: 12px;
             overflow: hidden;
             border: 3px solid transparent;
             cursor: pointer;
             transition: all 0.2s;
             position: relative;
             background: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
 
         .candidate-item:hover {
-            transform: scale(1.05);
-            border-color: rgba(102, 126, 234, 0.3);
+            transform: scale(1.03);
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
         }
 
         .candidate-item.selected {
             border-color: #667eea;
-            box-shadow: 0 0 12px rgba(102, 126, 234, 0.5);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4);
         }
 
         .candidate-item img {
@@ -552,6 +554,73 @@
 
         .candidate-item.selected .check {
             display: flex;
+        }
+
+        .enhance-btn {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 16px);
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: none; /* Hidden by default */
+            align-items: center;
+            gap: 6px;
+            z-index: 10;
+        }
+
+        .candidate-item.selected .enhance-btn {
+            display: flex; /* Show only when candidate is selected */
+        }
+
+        .enhance-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .enhance-btn.active {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-color: #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .enhance-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            z-index: 20;
+            border-radius: 8px;
+        }
+        
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 8px;
         }
 
         /* ===== MODAL ===== */
@@ -1613,7 +1682,8 @@
                 const data = await res.json();
                 currentCsvData = data.csv_data;
                 currentCandidates = data.candidates;
-                currentSelections = {}; // Reset
+                currentSelections = {}; // index -> url
+                enhanceSelections = {}; // index -> boolean
 
                 document.getElementById('imgUrlProgressBar').style.width = '100%';
                 document.getElementById('imgUrlStatus').textContent = `✅ Found candidates for ${currentCandidates.length} products. Select the images you want below.`;
@@ -1668,8 +1738,16 @@
                         check.className = 'check';
                         check.innerHTML = '✔';
 
+                        const enhanceBox = document.createElement('div');
+                        enhanceBox.innerHTML = `
+                            <button class="enhance-btn" onclick="toggleEnhance(event, ${idx}, this)">
+                                🪄 Enhance
+                            </button>
+                        `;
+
                         item.appendChild(img);
                         item.appendChild(check);
+                        item.appendChild(enhanceBox);
                         strip.appendChild(item);
                     });
                 }
@@ -1682,17 +1760,32 @@
         function selectImage(productIdx, url, element) {
             // Unselect others in the same strip
             const strip = element.parentElement;
-            strip.querySelectorAll('.candidate-item').forEach(el => el.classList.remove('selected'));
+            strip.querySelectorAll('.candidate-item').forEach(el => {
+                el.classList.remove('selected');
+                const btn = el.querySelector('.enhance-btn');
+                if (btn) btn.classList.remove('active'); // Reset enhance state on deselected items
+            });
             
             // Select this one
             element.classList.add('selected');
             currentSelections[productIdx] = url;
+            enhanceSelections[productIdx] = false; // Reset enhance toggle whenever a new image is selected
+        }
+
+        function toggleEnhance(event, productIdx, btnElement) {
+            event.stopPropagation(); // prevent triggering image selection again
+            
+            // Toggle active state
+            btnElement.classList.toggle('active');
+            enhanceSelections[productIdx] = btnElement.classList.contains('active');
         }
 
         async function finalizeInteractiveSelection() {
             const btn = document.getElementById('imgUrlRunBtn');
             btn.disabled = true;
-            document.getElementById('imgUrlStatus').textContent = '📝 Merging selections and generating CSV…';
+            document.getElementById('imgUrlStatus').textContent = '📝 Merging selections and enhancing images (this may take a minute)…';
+            document.getElementById('imgUrlProgressWrap').style.display = 'block';
+            document.getElementById('imgUrlProgressBar').style.width = '50%';
 
             try {
                 const res = await fetch(`${API_BASE}/finalize-csv-interactive`, {
@@ -1700,7 +1793,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         csv_data: currentCsvData,
-                        selections: currentSelections
+                        selections: currentSelections,
+                        enhance_flags: enhanceSelections
                     })
                 });
 
@@ -1708,6 +1802,8 @@
                     const err = await res.json();
                     throw new Error(err.detail || 'Finalization failed');
                 }
+
+                document.getElementById('imgUrlProgressBar').style.width = '100%';
 
                 // Auto-download
                 const blob = await res.blob();
@@ -1721,6 +1817,7 @@
                 document.getElementById('imgUrlStatus').textContent = '✅ Success! updated_products.csv downloaded.';
                 
             } catch (err) {
+                document.getElementById('imgUrlProgressBar').style.width = '0%';
                 showAlert('imgUrlAlert', '❌ ' + err.message, 'error');
             } finally {
                 btn.disabled = false;

@@ -22,3 +22,4 @@ boto3
 google-search-results
 motor
 python-dotenv
+google-genai
