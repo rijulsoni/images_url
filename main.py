@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -563,11 +563,16 @@ async def search_images_download(file: UploadFile = File(...)):
 
 
 # ==================== FLASH CSV UPDATER ====================
-@app.post("/update-flash-csv")
-async def update_flash_csv(
+# ==================== FLASH CSV UPDATER ====================
+
+@app.post("/preview-flash-csv")
+async def preview_flash_csv(
     flash_csv: UploadFile = File(...),
     booker_csv: UploadFile = File(...)
 ):
+    """
+    Step 1: Merge user Flash CSV with Booker CSV and return the preview data.
+    """
     try:
         flash_df  = pd.read_csv(io.BytesIO(await flash_csv.read()), dtype=str)
         booker_df = pd.read_csv(io.BytesIO(await booker_csv.read()), dtype=str)
@@ -578,41 +583,113 @@ async def update_flash_csv(
         flash_df["SKU"]        = flash_df["SKU"].astype(str).str.strip()
         booker_df["booker_id"] = booker_df["booker_id"].astype(str).str.strip()
 
-        # ===============================
-        # 🚀 STEP 1: BOOKER IMAGE → S3
-        # ===============================
-        logger.info("Uploading Booker images to S3 BEFORE merge...")
+        # Merge
+        merged = flash_df.merge(
+            booker_df[["booker_id", "product_name", "price", "image_url"]],
+            left_on="SKU",
+            right_on="booker_id",
+            how="left"
+        )
+        
+        # Build JSON response
+        # We send back merged data as csv_data, but ALL booker rows as preview_items
+        return JSONResponse(content={
+            "csv_data": merged.fillna("").to_dict(orient="records"),
+            "preview_items": booker_df.fillna("").to_dict(orient="records")
+        })
 
-        booker_image_urls = booker_df["image_url"].tolist()
+    except Exception as e:
+        logger.error(f"Error in preview-flash-csv: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
-        # Parallel Upload
-        s3_urls = await upload_parallel(booker_image_urls)
+@app.post("/finalize-flash-csv")
+async def finalize_flash_csv(
+    flash_csv: UploadFile = File(...),
+    booker_csv: UploadFile = File(...),
+    enhance_flags_str: str = Form(...)  # JSON string of booker_id -> bool
+):
+    """
+    Step 2: Take user selections for enhancements, process all Booker images, upload to S3,
+    and return the final merged CSV.
+    """
+    try:
+        flash_df  = pd.read_csv(io.BytesIO(await flash_csv.read()), dtype=str)
+        booker_df = pd.read_csv(io.BytesIO(await booker_csv.read()), dtype=str)
 
-        # Replace Booker CDN with S3 URL
-        booker_df["image_url"] = s3_urls
+        flash_df.columns  = flash_df.columns.str.strip()
+        booker_df.columns = booker_df.columns.str.strip()
+
+        flash_df["SKU"]        = flash_df["SKU"].astype(str).str.strip()
+        booker_df["booker_id"] = booker_df["booker_id"].astype(str).str.strip()
+
+        # Parse enhance flags
+        enhance_flags = json.loads(enhance_flags_str) if enhance_flags_str else {}
+
+        logger.info(f"Processing Booker CSV with {len(booker_df)} total rows. {sum(enhance_flags.values())} to enhance.")
+
+        # Gather unique URLs to upload to S3 from booker_df
+        unique_bookers = booker_df[booker_df["booker_id"] != ""].drop_duplicates(subset=["booker_id"])
+        
+        urls_to_process = []
+        for _, row in unique_bookers.iterrows():
+            b_id = row["booker_id"]
+            url = row["image_url"]
+            if url and str(url).startswith("http"):
+                urls_to_process.append((b_id, url, enhance_flags.get(str(b_id), False)))
+
+        # Process uploads/enhancements
+        async def process_image(b_id, url, should_enhance):
+            if should_enhance:
+                logger.info(f"Enhancing image for booker_id {b_id}: {url}")
+                try:
+                    req = EnhanceImageRequest(image_url=url)
+                    res = await enhance_image(req)
+                    if res.get("success"):
+                        return b_id, res.get("enhanced_url")
+                except Exception as e:
+                    logger.error(f"Failed to enhance {url}: {e}")
+            
+            # If not enhancing, or enhancement failed, upload the original to S3
+            logger.info(f"Uploading original to S3 for booker_id {b_id}: {url}")
+            loop = asyncio.get_running_loop()
+            s3_url = await loop.run_in_executor(executor, upload_image_to_s3, str(url))
+            return b_id, s3_url
+
+        tasks = [process_image(b_id, url, enhance) for b_id, url, enhance in urls_to_process]
+        results = await asyncio.gather(*tasks)
+
+        # Map back new S3 URLs into booker_df
+        s3_mapping = {b_id: final_url for b_id, final_url in results if final_url}
+        
+        def update_url(row):
+            b_id = row["booker_id"]
+            return s3_mapping.get(b_id, row["image_url"]) if b_id else row["image_url"]
+
+        booker_df["image_url"] = booker_df.apply(update_url, axis=1)
 
         logger.info("Booker images uploaded to S3 successfully")
 
-        # ===============================
-        # 🚀 STEP 2: NOW MERGE
-        # ===============================
+        # Merge Phase
         merged = flash_df.merge(
             booker_df[["booker_id", "price", "image_url"]],
             left_on="SKU",
             right_on="booker_id",
             how="left"
         )
-
+        
+        # Final merge mappings
+        merged.replace("", pd.NA, inplace=True)
         merged["Product Price*"] = merged["price"].combine_first(merged["Product Price*"])
         merged["Product Image Url"] = merged["image_url"].combine_first(merged["Product Image Url"])
 
-        merged.drop(columns=["booker_id", "price", "image_url"], inplace=True)
+        # Drop the temporary booker columns
+        cols_to_drop = [c for c in ["booker_id", "price", "image_url"] if c in merged.columns]
+        merged.drop(columns=cols_to_drop, inplace=True)
+        
+        merged.fillna("", inplace=True)
 
         logger.info("Merge complete — Flash now contains S3 image links")
 
-        # ===============================
-        # 🚀 STEP 3: RETURN CSV
-        # ===============================
         buf = io.BytesIO()
         merged.to_csv(buf, index=False)
         buf.seek(0)
@@ -625,7 +702,7 @@ async def update_flash_csv(
         )
 
     except Exception as e:
-        logger.error(f"Error in update-flash-csv: {e}", exc_info=True)
+        logger.error(f"Error in finalize-flash-csv: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

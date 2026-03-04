@@ -359,29 +359,24 @@
         /* ===== RESULTS GRID ===== */
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 24px;
-            margin-top: 32px;
+            margin-top: 20px;
         }
 
         .product-card {
-            background: var(--glass-bg);
-            border-radius: var(--radius-md);
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: var(--radius-lg);
             padding: 20px;
-            border: 1px solid var(--glass-border);
-            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .product-card:hover {
-            transform: translateY(-8px);
-            background: rgba(255, 255, 255, 0.06);
-            border-color: var(--primary);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-        }
-
-        .product-card img {
-            width: 100%;
-            height: 200px;
             object-fit: cover;
             border-radius: var(--radius-sm);
             margin-bottom: 16px;
@@ -507,15 +502,14 @@
         }
 
         .candidate-item {
-            flex: 0 0 180px;
-            height: 180px;
+            flex: 0 0 220px;
             border-radius: 12px;
             overflow: hidden;
             border: 3px solid transparent;
             cursor: pointer;
             transition: all 0.2s;
             position: relative;
-            background: #fff;
+            background: rgba(15, 23, 42, 0.4);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
 
@@ -528,6 +522,7 @@
         .candidate-item.selected {
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4);
+            background: rgba(15, 23, 42, 0.6);
         }
 
         .candidate-item img {
@@ -550,6 +545,7 @@
             justify-content: center;
             font-size: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 5;
         }
 
         .candidate-item.selected .check {
@@ -557,30 +553,20 @@
         }
 
         .enhance-btn {
-            position: absolute;
-            bottom: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 16px);
-            justify-content: center;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.05);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 6px;
             padding: 8px;
             font-size: 0.8rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
-            display: none; /* Hidden by default */
+            display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             z-index: 10;
-        }
-
-        .candidate-item.selected .enhance-btn {
-            display: flex; /* Show only when candidate is selected */
         }
 
         .enhance-btn:hover {
@@ -621,6 +607,56 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-bottom: 8px;
+        }
+
+        /* ===== IMAGE PREVIEW MODAL ===== */
+        .image-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .image-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .image-modal-content {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: var(--radius-md);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            object-fit: contain;
+        }
+
+        .image-modal-overlay.active .image-modal-content {
+            transform: scale(1);
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            transition: color 0.2s;
+        }
+
+        .image-modal-close:hover {
+            color: var(--primary);
         }
 
         /* ===== MODAL ===== */
@@ -974,11 +1010,27 @@
                         <div class="progress-bar" id="flashProgressBar"></div>
                     </div>
 
-                    <div class="btn-group">
-                        <button class="btn btn-primary" id="runFlashBtn" onclick="runFlashUpdate()" disabled>⚡ Merge & Download</button>
+                    <div class="btn-group" id="flashInitialBtns">
+                        <button class="btn btn-primary" id="runFlashBtn" onclick="runFlashPreview()" disabled>⚡ Preview Merge</button>
                         <button class="btn btn-secondary" onclick="resetFlash()">🔄 Reset</button>
                     </div>
                     <div id="flashAlert" style="margin-top:14px;"></div>
+                </div>
+
+                <!-- Preview Container (Hidden initially) -->
+                <div class="card" id="flashPreviewContainer" style="display:none; margin-top: 24px;">
+                    <h2><i data-lucide="eye"></i> Matched Products Preview</h2>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">
+                        Review the matched Booker products. Click the "✨ Enhance" button on any image to improve its quality before finalizing.
+                    </p>
+                    
+                    <div class="results-grid" id="flashPreviewGrid">
+                        <!-- Preview cards will be injected here -->
+                    </div>
+
+                    <div class="btn-group" style="margin-top: 32px;">
+                        <button class="btn btn-success" id="finalizeFlashBtn" onclick="runFlashFinalize()">✅ Confirm & Download</button>
+                    </div>
                 </div>
             </div>
 
@@ -1550,24 +1602,156 @@
         setupFlashDrop('flashDropZone',   'flashFileInput',   flashFile,   'flashFileChosen',   setFlashFile);
         setupFlashDrop('bookerDropZone2', 'bookerFileInput2', bookerFile2, 'bookerFileChosen2', setBookerFile2);
 
-        async function runFlashUpdate() {
+        let flashCsvData = null;
+        let flashEnhanceFlags = {}; // index -> true/false
+
+        async function runFlashPreview() {
             if (!flashFile || !bookerFile2) return;
             const btn = document.getElementById('runFlashBtn');
             btn.disabled = true;
-            document.getElementById('flashStatus').textContent = '⏳ Merging CSVs…';
+            document.getElementById('flashStatus').textContent = '⏳ Preparing preview…';
             document.getElementById('flashProgressWrap').style.display = 'block';
             document.getElementById('flashProgressBar').style.width = '60%';
+            document.getElementById('flashAlert').innerHTML = '';
 
             try {
                 const fd = new FormData();
                 fd.append('flash_csv',  flashFile);
                 fd.append('booker_csv', bookerFile2);
 
-                const res = await fetch(`${API_BASE}/update-flash-csv`, { method: 'POST', body: fd });
+                const res = await fetch(`${API_BASE}/preview-flash-csv`, { method: 'POST', body: fd });
 
                 if (!res.ok) {
                     const err = await res.json();
                     throw new Error(err.detail || 'Server error');
+                }
+
+                const data = await res.json();
+                flashCsvData = data.csv_data;
+                flashEnhanceFlags = {}; // Reset flags
+
+                document.getElementById('flashProgressBar').style.width = '100%';
+                
+                // Hide initial buttons, show preview container
+                document.getElementById('flashInitialBtns').style.display = 'none';
+                document.getElementById('flashPreviewContainer').style.display = 'block';
+                document.getElementById('flashStatus').textContent = `✅ Found ${data.preview_items.length} matched products.`;
+                
+                renderFlashPreviewGrid(data.preview_items);
+
+            } catch (err) {
+                document.getElementById('flashProgressBar').style.width = '0%';
+                document.getElementById('flashProgressWrap').style.display = 'none';
+                document.getElementById('flashStatus').textContent = '';
+                showAlert('flashAlert', '❌ ' + err.message, 'error');
+                btn.disabled = false;
+            }
+        }
+        
+        function renderFlashPreviewGrid(items) {
+            const grid = document.getElementById('flashPreviewGrid');
+            grid.innerHTML = '';
+            
+            if (!items || items.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--text-muted);">No products found in the Booker CSV.</div>';
+                return;
+            }
+            
+            items.forEach((item) => {
+                const b_id = item.booker_id;
+                if (!b_id) return;
+                
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.style.display = 'flex';
+                card.style.flexDirection = 'column';
+                card.style.height = '100%';
+                
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'flash-preview-img-container';
+                imgContainer.style.backgroundColor = '#fff';
+                imgContainer.style.borderRadius = 'var(--radius-md)';
+                imgContainer.style.overflow = 'hidden'; 
+                imgContainer.style.marginBottom = '12px';
+                
+                const img = document.createElement('img');
+                img.className = 'flash-preview-img';
+                img.src = item.image_url || 'https://via.placeholder.com/250x200?text=No+Image';
+                img.alt = item.product_name;
+                img.style.cursor = 'zoom-in';
+                if (item.image_url) {
+                    img.onclick = () => openImagePreview(item.image_url);
+                }
+                imgContainer.appendChild(img);
+                
+                const enhanceBtn = document.createElement('button');
+                enhanceBtn.className = 'btn btn-secondary';
+                enhanceBtn.innerHTML = '✨ Enhance';
+                enhanceBtn.style.width = '100%';
+                enhanceBtn.style.marginBottom = '14px';
+                enhanceBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                enhanceBtn.style.border = '1px solid rgba(255,255,255,0.1)';
+                
+                // Initialize state
+                flashEnhanceFlags[b_id] = false;
+                
+                enhanceBtn.onclick = (e) => toggleFlashEnhance(e, b_id, enhanceBtn);
+                
+                const detailsContainer = document.createElement('div');
+                detailsContainer.style.flexGrow = '1';
+                detailsContainer.style.display = 'flex';
+                detailsContainer.style.flexDirection = 'column';
+                detailsContainer.innerHTML = `
+                    <h4 style="margin-bottom: 8px; font-size: 1.05rem; line-height: 1.3;">${item.product_name || 'Unknown Item'}</h4>
+                    <div style="color: var(--success); font-weight: 600; font-size: 1.15rem; margin-bottom: 8px; flex-grow: 1;">${item.price || 'No Price'}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">Booker ID: ${b_id}</div>
+                `;
+                
+                card.appendChild(imgContainer);
+                card.appendChild(enhanceBtn);
+                card.appendChild(detailsContainer);
+                grid.appendChild(card);
+            });
+        }
+        
+        function toggleFlashEnhance(event, b_id, btnEl) {
+            flashEnhanceFlags[b_id] = !flashEnhanceFlags[b_id];
+            
+            if (flashEnhanceFlags[b_id]) {
+                btnEl.style.background = 'linear-gradient(135deg, #7209b7, #4361ee)';
+                btnEl.style.borderColor = '#4361ee';
+                btnEl.style.color = 'white';
+                btnEl.innerHTML = '✨ Will Enhance';
+            } else {
+                btnEl.style.background = 'rgba(255, 255, 255, 0.05)';
+                btnEl.style.borderColor = 'rgba(255,255,255,0.1)';
+                btnEl.style.color = 'white';
+                btnEl.innerHTML = '✨ Enhance';
+            }
+        }
+        
+        async function runFlashFinalize() {
+            if (!flashFile || !bookerFile2) return;
+            
+            const btn = document.getElementById('finalizeFlashBtn');
+            btn.disabled = true;
+            document.getElementById('flashStatus').textContent = '⏳ Processing images and finalizing CSV (this may take a minute)…';
+            document.getElementById('flashProgressBar').style.width = '50%';
+            
+            try {
+                const fd = new FormData();
+                fd.append('flash_csv', flashFile);
+                fd.append('booker_csv', bookerFile2);
+                fd.append('enhance_flags_str', JSON.stringify(flashEnhanceFlags));
+                
+                const res = await fetch(`${API_BASE}/finalize-flash-csv`, {
+                    method: 'POST',
+                    body: fd
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Finalization failed');
                 }
 
                 document.getElementById('flashProgressBar').style.width = '100%';
@@ -1581,12 +1765,10 @@
                 a.click();
                 URL.revokeObjectURL(url);
 
-                document.getElementById('flashStatus').textContent = '✅ Done! updated_flash.csv downloaded.';
-
+                document.getElementById('flashStatus').textContent = '✅ Success! updated_flash.csv downloaded.';
+                
             } catch (err) {
                 document.getElementById('flashProgressBar').style.width = '0%';
-                document.getElementById('flashProgressWrap').style.display = 'none';
-                document.getElementById('flashStatus').textContent = '';
                 showAlert('flashAlert', '❌ ' + err.message, 'error');
             } finally {
                 btn.disabled = false;
@@ -1596,6 +1778,8 @@
         function resetFlash() {
             flashFile = null;
             bookerFile2 = null;
+            flashCsvData = null;
+            flashEnhanceFlags = {};
             ['flashFileInput','bookerFileInput2'].forEach(id => document.getElementById(id).value = '');
             ['flashFileChosen','bookerFileChosen2'].forEach(id => document.getElementById(id).textContent = '');
             document.getElementById('flashStatus').textContent = '';
@@ -1603,6 +1787,12 @@
             document.getElementById('flashProgressBar').style.width = '0%';
             document.getElementById('flashAlert').innerHTML = '';
             document.getElementById('runFlashBtn').disabled = true;
+            document.getElementById('runFlashBtn').textContent = '⚡ Preview Merge';
+            
+            document.getElementById('flashInitialBtns').style.display = 'block';
+            document.getElementById('flashPreviewContainer').style.display = 'none';
+            document.getElementById('flashPreviewGrid').innerHTML = '';
+            document.getElementById('finalizeFlashBtn').disabled = false;
         }
 
         // ===== IMAGE URL UPDATER (INTERACTIVE) =====
@@ -1728,25 +1918,49 @@
                     candidates.forEach(cand => {
                         const item = document.createElement('div');
                         item.className = 'candidate-item';
+                        item.style.display = 'flex';
+                        item.style.flexDirection = 'column';
+                        item.style.height = 'auto'; // allow expansion
+                        item.style.padding = '10px';
                         item.onclick = () => selectImage(idx, cand.original, item);
                         
+                        const imgContainer = document.createElement('div');
+                        imgContainer.className = 'flash-preview-img-container';
+                        imgContainer.style.backgroundColor = '#fff';
+                        imgContainer.style.borderRadius = 'var(--radius-md)';
+                        imgContainer.style.overflow = 'hidden'; 
+                        imgContainer.style.marginBottom = '12px';
+                        imgContainer.style.height = '160px'; // fixed height for thumbnails
+                        
                         const img = document.createElement('img');
+                        img.className = 'flash-preview-img';
                         img.src = cand.thumbnail;
                         img.loading = 'lazy';
+                        img.style.cursor = 'zoom-in';
+                        img.onclick = (e) => {
+                            e.stopPropagation(); // prevent selecting the item
+                            openImagePreview(cand.original);
+                        };
+                        
+                        imgContainer.appendChild(img);
                         
                         const check = document.createElement('div');
                         check.className = 'check';
                         check.innerHTML = '✔';
+                        
+                        // Add check inside image container for UI clarity
+                        imgContainer.appendChild(check);
 
                         const enhanceBox = document.createElement('div');
+                        enhanceBox.className = 'enhance-btn-container';
+                        enhanceBox.style.width = '100%';
                         enhanceBox.innerHTML = `
-                            <button class="enhance-btn" onclick="toggleEnhance(event, ${idx}, this)">
-                                🪄 Enhance
+                            <button class="enhance-btn" style="position: relative; width: 100%; bottom: 0; transform: none; left: 0;" onclick="toggleEnhance(event, ${idx}, this)">
+                                ✨ Enhance
                             </button>
                         `;
 
-                        item.appendChild(img);
-                        item.appendChild(check);
+                        item.appendChild(imgContainer);
                         item.appendChild(enhanceBox);
                         strip.appendChild(item);
                     });
@@ -1840,6 +2054,106 @@
             document.getElementById('imgUrlSelectionGallery').style.display = 'none';
             document.getElementById('imgUrlSelectionGallery').innerHTML = '';
         }
+
+        // ===== IMAGE MODAL PREVIEW (ZOOM & PAN) =====
+        let imgScale = 1;
+        let imgPanX = 0;
+        let imgPanY = 0;
+        let isPanning = false;
+        let startX = 0;
+        let startY = 0;
+
+        function openImagePreview(src) {
+            const modal = document.getElementById('imagePreviewModal');
+            const content = document.getElementById('imagePreviewContent');
+            content.src = src;
+            resetZoom();
+            modal.classList.add('active');
+        }
+
+        function closeImagePreview() {
+            const modal = document.getElementById('imagePreviewModal');
+            modal.classList.remove('active');
+        }
+
+        function zoomImage(delta) {
+            imgScale += delta;
+            if (imgScale < 0.2) imgScale = 0.2;
+            if (imgScale > 5) imgScale = 5;
+            applyTransform();
+        }
+
+        function resetZoom() {
+            imgScale = 1;
+            imgPanX = 0;
+            imgPanY = 0;
+            const content = document.getElementById('imagePreviewContent');
+            content.style.transform = '';
+            content.style.transition = '';
+        }
+
+        function applyTransform(animate = true) {
+            const content = document.getElementById('imagePreviewContent');
+            content.style.transition = animate ? 'transform 0.1s ease-out' : 'none';
+            content.style.transform = `translate(${imgPanX}px, ${imgPanY}px) scale(${imgScale})`;
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeImagePreview();
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const imgContent = document.getElementById('imagePreviewContent');
+            if (imgContent) {
+                imgContent.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? -0.15 : 0.15;
+                    zoomImage(delta);
+                }, { passive: false });
+
+                imgContent.addEventListener('mousedown', (e) => {
+                    isPanning = true;
+                    startX = e.clientX - imgPanX;
+                    startY = e.clientY - imgPanY;
+                    imgContent.style.cursor = 'grabbing';
+                    imgContent.style.transition = 'none'; // Disable transition for smooth panning
+                    e.preventDefault();
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (!isPanning) return;
+                    imgPanX = e.clientX - startX;
+                    imgPanY = e.clientY - startY;
+                    applyTransform(false);
+                });
+
+                window.addEventListener('mouseup', () => {
+                    if (isPanning) {
+                        isPanning = false;
+                        imgContent.style.cursor = 'grab';
+                        applyTransform(true);
+                    }
+                });
+
+                imgContent.addEventListener('dblclick', (e) => {
+                    resetZoom();
+                });
+            }
+        });
     </script>
+
+    <!-- Full Screen Image Modal -->
+    <div id="imagePreviewModal" class="image-modal-overlay" onclick="closeImagePreview()">
+        <span class="image-modal-close" onclick="closeImagePreview()">&times;</span>
+        <div style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 10000; background: rgba(15, 23, 42, 0.7); padding: 10px 20px; border-radius: 50px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1);" onclick="event.stopPropagation()">
+            <button class="btn btn-secondary" style="padding: 8px 16px; min-width: unset;" onclick="zoomImage(-0.25)">➖</button>
+            <button class="btn btn-secondary" style="padding: 8px 16px; min-width: unset;" onclick="resetZoom()">🔄 Reset</button>
+            <button class="btn btn-secondary" style="padding: 8px 16px; min-width: unset;" onclick="zoomImage(0.25)">➕</button>
+        </div>
+        <img id="imagePreviewContent" class="image-modal-content" src="" alt="Full Screen Preview" onclick="event.stopPropagation()" style="cursor: grab;">
+    </div>
 </body>
 </html>
