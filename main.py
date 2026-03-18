@@ -733,9 +733,24 @@ async def _serpapi_image_candidates(product_name: str, max_candidates: int = 10)
             "Content-Type": "application/json",
         }
 
-        # requests.post is blocking, so run in thread
-        resp = await asyncio.to_thread(req.post, url, headers=headers, json=payload, timeout=15)
-        data = resp.json()
+        max_retries = 3
+        data = None
+        for attempt in range(max_retries):
+            # requests.post is blocking, so run in thread
+            resp = await asyncio.to_thread(req.post, url, headers=headers, json=payload, timeout=15)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                break
+            elif resp.status_code in [429, 500, 502, 503, 504]:
+                logger.warning(f"Serper returned {resp.status_code} for '{product_name}'. Retrying ({attempt+1}/{max_retries})")
+                await asyncio.sleep(2 * (attempt + 1))
+            else:
+                resp.raise_for_status()
+        
+        if not data:
+            logger.error(f"Gave up fetching '{product_name}' after {max_retries} attempts.")
+            return []
 
         logger.info(f"Serper response keys: {list(data.keys())} for '{product_name}'")
 
@@ -800,9 +815,17 @@ async def get_image_candidates(file: UploadFile = File(...)):
 
         # ── Direct SerpAPI Lookups (No Cache / No DB) ───────────────
         product_names = df[product_col].fillna("").astype(str).tolist()
-        logger.info(f"Product names 11: {product_names}")
+        logger.info(f"Product names 11: {product_names[:10]}... (Total: {len(product_names)})")
+
+        sem = asyncio.Semaphore(10) # Limit concurrent requests to 10
+        
+        async def fetch_with_limit(name):
+            async with sem:
+                await asyncio.sleep(0.1) # Small delay to respect rate limit
+                return await _serpapi_image_candidates(name)
+
         tasks = [
-            _serpapi_image_candidates(name)
+            fetch_with_limit(name)
             for name in product_names
         ]
 
