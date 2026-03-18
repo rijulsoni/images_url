@@ -453,47 +453,33 @@
         .alert-error { border-left-color: var(--danger); color: #fca5a5; }
 
         /* ===== IMAGES SELECTION ===== */
-        .candidate-strip {
-            display: flex;
-            gap: 12px;
-            overflow-x: auto;
-            padding: 10px 0;
-            mask-image: linear-gradient(to right, black 90%, transparent);
-        }
-
-        .candidate-item {
-            flex: 0 0 140px;
-            height: 140px;
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: var(--transition);
-            background: #000;
-        }
-
-        .candidate-item.selected {
-            border-color: var(--primary);
-            transform: scale(1.05);
+        .product-selection-row {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
         }
 
         .product-selection-row h4 {
-            font-size: 0.95rem;
-            color: #333;
-            margin-bottom: 12px;
+            font-size: 1.1rem;
+            color: var(--text-main);
+            margin-bottom: 16px;
             font-weight: 600;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--glass-border);
         }
 
         .candidate-strip {
             display: flex;
-            gap: 12px;
+            gap: 16px;
             overflow-x: auto;
-            padding-bottom: 10px;
+            padding: 8px 4px 14px 4px;
             scrollbar-width: thin;
         }
 
         .candidate-strip::-webkit-scrollbar {
-            height: 6px;
+            height: 8px;
         }
 
         .candidate-strip::-webkit-scrollbar-thumb {
@@ -502,27 +488,27 @@
         }
 
         .candidate-item {
-            flex: 0 0 220px;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 3px solid transparent;
+            flex: 0 0 200px;
+            border-radius: var(--radius-md);
+            overflow: visible;
+            border: 3px solid rgba(255, 255, 255, 0.08);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            background: rgba(15, 23, 42, 0.4);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            background: rgba(15, 23, 42, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .candidate-item:hover {
-            transform: scale(1.03);
+            transform: translateY(-4px);
             border-color: rgba(102, 126, 234, 0.5);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
         }
 
         .candidate-item.selected {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4);
-            background: rgba(15, 23, 42, 0.6);
+            border-color: var(--success);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3), 0 8px 20px rgba(16, 185, 129, 0.15);
+            transform: translateY(-4px);
         }
 
         .candidate-item img {
@@ -533,19 +519,27 @@
 
         .candidate-item .check {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            background: #667eea;
+            top: -10px;
+            right: -10px;
+            background: var(--success);
             color: white;
-            width: 20px;
-            height: 20px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             display: none;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
             z-index: 5;
+            border: 2px solid rgba(15, 23, 42, 0.8);
+            animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
         }
 
         .candidate-item.selected .check {
@@ -553,11 +547,11 @@
         }
 
         .enhance-btn {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 8px;
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
             font-size: 0.8rem;
             font-weight: 500;
             cursor: pointer;
@@ -572,12 +566,14 @@
         .enhance-btn:hover {
             background: var(--primary);
             border-color: var(--primary);
+            color: white;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
         .enhance-btn.active {
             background: linear-gradient(135deg, #f59e0b, #d97706);
             border-color: #f59e0b;
+            color: white;
             box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
         }
 
@@ -597,7 +593,7 @@
             z-index: 20;
             border-radius: 8px;
         }
-        
+
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spinner {
             width: 20px;
@@ -657,6 +653,112 @@
 
         .image-modal-close:hover {
             color: var(--primary);
+        }
+
+        /* ===== SLIDER NAVIGATION UI ===== */
+        .modal-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10001;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-nav-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .modal-nav-btn i {
+            width: 28px;
+            height: 28px;
+        }
+
+        .modal-nav-btn.prev-btn { left: 30px; }
+        .modal-nav-btn.next-btn { right: 30px; }
+
+        .modal-top-bar {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(15, 23, 42, 0.7);
+            padding: 12px 28px;
+            border-radius: 50px;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        #sliderCounter {
+            color: white;
+            font-weight: 600;
+            font-size: 1.05rem;
+            min-width: 60px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        #sliderSelectBtn {
+            padding: 10px 24px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.25s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        #sliderSelectBtn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-bottom-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 16px;
+            z-index: 10000;
+            background: rgba(15, 23, 42, 0.7);
+            padding: 12px 24px;
+            border-radius: 50px;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-bottom-bar .btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            min-width: unset;
+            border-radius: 30px;
         }
 
         /* ===== MODAL ===== */
@@ -1038,20 +1140,20 @@
             <div id="image-updater" class="page">
                 <div class="header">
                     <h1>🔍 Image URL Updater</h1>
-                    <p style="color: rgba(255,255,255,0.7); margin-top: 5px;">Enrich CSV product data with images via SerpAPI</p>
+                    <p style="color: rgba(255,255,255,0.7); margin-top: 5px;">Enrich CSV product data with images via Serper API</p>
                 </div>
                 
                 <div class="card" id="imageUrlCard">
                     <p style="color:#888;font-size:.95rem;margin-bottom:24px;">
                         Upload any CSV that has a <strong>Product Name</strong> column.
-                        SerpAPI Google Images will be queried for every product and the
-                        <strong>image_url</strong> column will be filled automatically.
+                        Google Images will be queried for every product, and you'll be able to 
+                        <strong>preview and select</strong> the best image for each row before saving.
                     </p>
 
                     <div class="drop-zone" id="imgUrlDropZone" onclick="document.getElementById('imgUrlFileInput').click()">
                         <i data-lucide="image-plus"></i>
                         <p>Drop your CSV here, or click to browse</p>
-                        <small>Any CSV with a product name column — image_url will be filled</small>
+                        <small>Any CSV with a product name column — review and select images</small>
                         <div id="imgUrlFileChosen"></div>
                     </div>
                     <input type="file" id="imgUrlFileInput" accept=".csv" style="display:none;">
@@ -1913,55 +2015,70 @@
                 strip.className = 'candidate-strip';
 
                 if (!candidates || candidates.length === 0) {
-                    strip.innerHTML = '<p style="color:#999;font-size:0.85rem;">No images found for this product.</p>';
+                    strip.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; padding: 12px 0;">⚠️ No images found for this product.</p>';
                 } else {
                     candidates.forEach(cand => {
                         const item = document.createElement('div');
                         item.className = 'candidate-item';
                         item.style.display = 'flex';
                         item.style.flexDirection = 'column';
-                        item.style.height = 'auto'; // allow expansion
+                        item.style.height = 'auto';
                         item.style.padding = '10px';
                         item.onclick = () => selectImage(idx, cand.original, item);
                         
-                        const imgContainer = document.createElement('div');
-                        imgContainer.className = 'flash-preview-img-container';
-                        imgContainer.style.backgroundColor = '#fff';
-                        imgContainer.style.borderRadius = 'var(--radius-md)';
-                        imgContainer.style.overflow = 'hidden'; 
-                        imgContainer.style.marginBottom = '12px';
-                        imgContainer.style.height = '160px'; // fixed height for thumbnails
-                        
-                        const img = document.createElement('img');
-                        img.className = 'flash-preview-img';
-                        img.src = cand.thumbnail;
-                        img.loading = 'lazy';
-                        img.style.cursor = 'zoom-in';
-                        img.onclick = (e) => {
-                            e.stopPropagation(); // prevent selecting the item
-                            openImagePreview(cand.original);
-                        };
-                        
-                        imgContainer.appendChild(img);
-                        
+                        // Checkmark badge (direct child of item, so it sits on corner)
                         const check = document.createElement('div');
                         check.className = 'check';
                         check.innerHTML = '✔';
-                        
-                        // Add check inside image container for UI clarity
-                        imgContainer.appendChild(check);
+                        item.appendChild(check);
 
-                        const enhanceBox = document.createElement('div');
-                        enhanceBox.className = 'enhance-btn-container';
-                        enhanceBox.style.width = '100%';
-                        enhanceBox.innerHTML = `
-                            <button class="enhance-btn" style="position: relative; width: 100%; bottom: 0; transform: none; left: 0;" onclick="toggleEnhance(event, ${idx}, this)">
-                                ✨ Enhance
-                            </button>
-                        `;
+                        const imgContainer = document.createElement('div');
+                        imgContainer.style.backgroundColor = '#fff';
+                        imgContainer.style.borderRadius = 'var(--radius-sm)';
+                        imgContainer.style.overflow = 'hidden'; 
+                        imgContainer.style.marginBottom = '10px';
+                        imgContainer.style.height = '180px';
+                        imgContainer.style.display = 'flex';
+                        imgContainer.style.alignItems = 'center';
+                        imgContainer.style.justifyContent = 'center';
+                        
+                        const img = document.createElement('img');
+                        img.src = cand.thumbnail;
+                        img.alt = 'Image candidate';
+                        img.loading = 'lazy';
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'contain';
+                        img.style.cursor = 'pointer';
+                        
+                        imgContainer.appendChild(img);
+
+                        // Buttons row
+                        const btnRow = document.createElement('div');
+                        btnRow.style.display = 'flex';
+                        btnRow.style.gap = '6px';
+
+                        const candIdx = candidates.indexOf(cand);
+                        const previewBtn = document.createElement('button');
+                        previewBtn.className = 'enhance-btn';
+                        previewBtn.style.flex = '1';
+                        previewBtn.innerHTML = '🔍 Preview';
+                        previewBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            openImageSlider(idx, candIdx);
+                        };
+
+                        const enhanceBtn = document.createElement('button');
+                        enhanceBtn.className = 'enhance-btn';
+                        enhanceBtn.style.flex = '1';
+                        enhanceBtn.innerHTML = '✨ Enhance';
+                        enhanceBtn.onclick = (e) => toggleEnhance(e, idx, enhanceBtn);
+
+                        btnRow.appendChild(previewBtn);
+                        btnRow.appendChild(enhanceBtn);
 
                         item.appendChild(imgContainer);
-                        item.appendChild(enhanceBox);
+                        item.appendChild(btnRow);
                         strip.appendChild(item);
                     });
                 }
@@ -2000,6 +2117,15 @@
             document.getElementById('imgUrlStatus').textContent = '📝 Merging selections and enhancing images (this may take a minute)…';
             document.getElementById('imgUrlProgressWrap').style.display = 'block';
             document.getElementById('imgUrlProgressBar').style.width = '50%';
+
+            // Auto-select first candidate for any product without a manual selection
+            if (currentCandidates) {
+                currentCandidates.forEach((candidates, idx) => {
+                    if (!currentSelections.hasOwnProperty(idx) && candidates && candidates.length > 0) {
+                        currentSelections[idx] = candidates[0].original;
+                    }
+                });
+            }
 
             try {
                 const res = await fetch(`${API_BASE}/finalize-csv-interactive`, {
@@ -2055,7 +2181,7 @@
             document.getElementById('imgUrlSelectionGallery').innerHTML = '';
         }
 
-        // ===== IMAGE MODAL PREVIEW (ZOOM & PAN) =====
+        // ===== IMAGE MODAL PREVIEW (ZOOM, PAN & SLIDER) =====
         let imgScale = 1;
         let imgPanX = 0;
         let imgPanY = 0;
@@ -2063,12 +2189,84 @@
         let startX = 0;
         let startY = 0;
 
+        // Slider state
+        let sliderProductIdx = -1;
+        let sliderCandIdx = 0;
+        let sliderCandidates = [];
+
         function openImagePreview(src) {
+            sliderProductIdx = -1;
+            sliderCandidates = [];
+            sliderCandIdx = 0;
+            document.getElementById('sliderControls').style.display = 'none';
             const modal = document.getElementById('imagePreviewModal');
             const content = document.getElementById('imagePreviewContent');
             content.src = src;
             resetZoom();
             modal.classList.add('active');
+        }
+
+        function openImageSlider(productIdx, candIdx) {
+            if (!currentCandidates || !currentCandidates[productIdx]) return;
+            sliderProductIdx = productIdx;
+            sliderCandidates = currentCandidates[productIdx];
+            sliderCandIdx = candIdx || 0;
+            document.getElementById('sliderControls').style.display = 'flex';
+            updateSliderImage();
+            resetZoom();
+            document.getElementById('imagePreviewModal').classList.add('active');
+        }
+
+        function updateSliderImage() {
+            if (!sliderCandidates.length) return;
+            const cand = sliderCandidates[sliderCandIdx];
+            document.getElementById('imagePreviewContent').src = cand.original;
+            document.getElementById('sliderCounter').textContent = `${sliderCandIdx + 1} / ${sliderCandidates.length}`;
+            // Update select button state
+            const isSelected = currentSelections[sliderProductIdx] === cand.original;
+            const selectBtn = document.getElementById('sliderSelectBtn');
+            if (isSelected) {
+                selectBtn.innerHTML = '<i data-lucide="check-circle" style="width:18px;height:18px;"></i> Selected';
+                selectBtn.style.background = 'var(--success)';
+                selectBtn.style.borderColor = 'var(--success)';
+            } else {
+                selectBtn.innerHTML = '<i data-lucide="check" style="width:18px;height:18px;"></i> Select This Image';
+                selectBtn.style.background = 'rgba(255,255,255,0.1)';
+                selectBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function sliderPrev() {
+            if (sliderCandIdx > 0) {
+                sliderCandIdx--;
+                resetZoom();
+                updateSliderImage();
+            }
+        }
+
+        function sliderNext() {
+            if (sliderCandIdx < sliderCandidates.length - 1) {
+                sliderCandIdx++;
+                resetZoom();
+                updateSliderImage();
+            }
+        }
+
+        function sliderSelectCurrent() {
+            if (sliderProductIdx < 0 || !sliderCandidates.length) return;
+            const cand = sliderCandidates[sliderCandIdx];
+            currentSelections[sliderProductIdx] = cand.original;
+            // Update the gallery card UI
+            const gallery = document.getElementById('imgUrlSelectionGallery');
+            const rows = gallery.querySelectorAll('.product-selection-row');
+            if (rows[sliderProductIdx]) {
+                const items = rows[sliderProductIdx].querySelectorAll('.candidate-item');
+                items.forEach((el, i) => {
+                    el.classList.toggle('selected', i === sliderCandIdx);
+                });
+            }
+            updateSliderImage();
         }
 
         function closeImagePreview() {
@@ -2098,10 +2296,16 @@
             content.style.transform = `translate(${imgPanX}px, ${imgPanY}px) scale(${imgScale})`;
         }
 
-        // Close modal on Escape key
+        // Keyboard navigation
         document.addEventListener('keydown', function(event) {
+            const modal = document.getElementById('imagePreviewModal');
+            if (!modal.classList.contains('active')) return;
             if (event.key === 'Escape') {
                 closeImagePreview();
+            } else if (event.key === 'ArrowLeft') {
+                sliderPrev();
+            } else if (event.key === 'ArrowRight') {
+                sliderNext();
             }
         });
         
@@ -2147,12 +2351,40 @@
 
     <!-- Full Screen Image Modal -->
     <div id="imagePreviewModal" class="image-modal-overlay" onclick="closeImagePreview()">
-        <span class="image-modal-close" onclick="closeImagePreview()">&times;</span>
-        <div style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 10000; background: rgba(15, 23, 42, 0.7); padding: 10px 20px; border-radius: 50px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1);" onclick="event.stopPropagation()">
-            <button class="btn btn-secondary" style="padding: 8px 16px; min-width: unset;" onclick="zoomImage(-0.25)">➖</button>
-            <button class="btn btn-secondary" style="padding: 8px 16px; min-width: unset;" onclick="resetZoom()">🔄 Reset</button>
-            <button class="btn btn-secondary" style="padding: 8px 16px; min-width: unset;" onclick="zoomImage(0.25)">➕</button>
+        <span class="image-modal-close" onclick="closeImagePreview()" title="Close"><i data-lucide="x" style="width:36px;height:36px;"></i></span>
+
+        <!-- Slider Controls (Appears only when slider is open) -->
+        <div id="sliderControls" style="display: none;">
+            <!-- Left Arrow -->
+            <button onclick="event.stopPropagation(); sliderPrev()" class="modal-nav-btn prev-btn" title="Previous Image">
+                <i data-lucide="chevron-left"></i>
+            </button>
+            <!-- Right Arrow -->
+            <button onclick="event.stopPropagation(); sliderNext()" class="modal-nav-btn next-btn" title="Next Image">
+                <i data-lucide="chevron-right"></i>
+            </button>
+            <!-- Counter + Select Pill -->
+            <div class="modal-top-bar" onclick="event.stopPropagation()">
+                <span id="sliderCounter">1 / 1</span>
+                <button id="sliderSelectBtn" onclick="sliderSelectCurrent()">
+                    <i data-lucide="check" style="width:18px;height:18px;"></i> Select This Image
+                </button>
+            </div>
         </div>
+
+        <!-- Bottom Zoom Controls -->
+        <div class="modal-bottom-bar" onclick="event.stopPropagation()">
+            <button class="btn btn-secondary" onclick="zoomImage(-0.25)" title="Zoom Out">
+                <i data-lucide="zoom-out" style="width:18px;height:18px;"></i>
+            </button>
+            <button class="btn btn-secondary" onclick="resetZoom()" title="Reset Zoom">
+                <i data-lucide="refresh-ccw" style="width:18px;height:18px;"></i> Reset
+            </button>
+            <button class="btn btn-secondary" onclick="zoomImage(0.25)" title="Zoom In">
+                <i data-lucide="zoom-in" style="width:18px;height:18px;"></i>
+            </button>
+        </div>
+        
         <img id="imagePreviewContent" class="image-modal-content" src="" alt="Full Screen Preview" onclick="event.stopPropagation()" style="cursor: grab;">
     </div>
 </body>

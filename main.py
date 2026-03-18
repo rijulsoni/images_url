@@ -727,7 +727,7 @@ async def _serpapi_image_candidates(product_name: str, max_candidates: int = 10)
 
     try:
         url = "https://google.serper.dev/images"
-        payload = {"q": product_name}
+        payload = {"q": product_name,  "gl": "gb"}
         headers = {
             "X-API-KEY": api_key,
             "Content-Type": "application/json",
@@ -897,12 +897,19 @@ async def finalize_csv_interactive(data: FinalizeSelection):
     try:
         df = pd.DataFrame(data.csv_data)
         
-        if "image_url" not in df.columns:
-            df["image_url"] = ""
+        # Detect the actual image column name in the CSV
+        image_col = None
+        for col in df.columns:
+            if col.lower().replace(" ", "").replace("_", "") in ("productimageurl", "imageurl", "image_url"):
+                image_col = col
+                break
+        if not image_col:
+            image_col = "Product Image Url"
+            df[image_col] = ""
 
         enhance_flags = data.enhance_flags or {}
 
-        # Update image_url column based on user selections
+        # Update the image column based on user selections
         for idx_str, selected_url in data.selections.items():
             idx = int(idx_str)
             if idx < len(df):
@@ -922,7 +929,7 @@ async def finalize_csv_interactive(data: FinalizeSelection):
                         # Fallback to original if enhancement fails
                         final_url = selected_url
 
-                df.at[idx, "image_url"] = final_url
+                df.at[idx, image_col] = final_url
 
         buf = io.BytesIO()
         df.to_csv(buf, index=False)

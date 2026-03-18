@@ -15,7 +15,7 @@ A comprehensive FastAPI-based service that provides:
 - ⚙️ **Configurable**: JSON-based site configuration for easy customization
 
 ### Image Search
-- 🔍 **Google Image Search**: Powered by Google Custom Search API
+- 🔍 **Google Image Search**: Powered by Serper API
 - 🎨 **Smart Filtering**: Filters images by size, format, and relevance
 - 📦 **Batch Processing**: Process multiple products from CSV files
 - 📥 **CSV Export**: Download results as CSV
