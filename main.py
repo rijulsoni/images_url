@@ -773,7 +773,10 @@ async def get_image_candidates(file: UploadFile = File(...)):
 
     try:
         contents = await file.read()
-        df = pd.read_csv(io.BytesIO(contents))
+        try:
+            df = pd.read_csv(io.BytesIO(contents))
+        except UnicodeDecodeError:
+            df = pd.read_csv(io.BytesIO(contents), encoding="latin1")
 
         if df.empty:
             raise HTTPException(status_code=400, detail="The uploaded CSV file is empty.")
