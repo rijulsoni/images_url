@@ -733,24 +733,14 @@ async def _serpapi_image_candidates(product_name: str, max_candidates: int = 10)
             "Content-Type": "application/json",
         }
 
-        max_retries = 3
-        data = None
-        for attempt in range(max_retries):
-            # requests.post is blocking, so run in thread
-            resp = await asyncio.to_thread(req.post, url, headers=headers, json=payload, timeout=15)
-            
-            if resp.status_code == 200:
-                data = resp.json()
-                break
-            elif resp.status_code in [429, 500, 502, 503, 504]:
-                logger.warning(f"Serper returned {resp.status_code} for '{product_name}'. Retrying ({attempt+1}/{max_retries})")
-                await asyncio.sleep(2 * (attempt + 1))
-            else:
-                resp.raise_for_status()
+        # requests.post is blocking, so run in thread
+        resp = await asyncio.to_thread(req.post, url, headers=headers, json=payload, timeout=15)
         
-        if not data:
-            logger.error(f"Gave up fetching '{product_name}' after {max_retries} attempts.")
+        if resp.status_code != 200:
+            logger.error(f"Serper returned {resp.status_code} for '{product_name}'.")
             return []
+        
+        data = resp.json()
 
         logger.info(f"Serper response keys: {list(data.keys())} for '{product_name}'")
 
@@ -813,8 +803,13 @@ async def get_image_candidates(file: UploadFile = File(...)):
             if not product_col:
                 product_col = df.columns[0]
 
+        # ── Drop empty rows before processing ───────────────────────
+        df = df[df[product_col].fillna("").astype(str).str.strip() != ""]
+        df = df.reset_index(drop=True)
+        logger.info(f"After dropping empty rows: {len(df)} rows remain")
+
         # ── Direct SerpAPI Lookups (No Cache / No DB) ───────────────
-        product_names = df[product_col].fillna("").astype(str).tolist()
+        product_names = df[product_col].astype(str).tolist()
         logger.info(f"Product names 11: {product_names[:10]}... (Total: {len(product_names)})")
 
         sem = asyncio.Semaphore(10) # Limit concurrent requests to 10
@@ -824,11 +819,7 @@ async def get_image_candidates(file: UploadFile = File(...)):
                 await asyncio.sleep(0.1) # Small delay to respect rate limit
                 return await _serpapi_image_candidates(name)
 
-        tasks = [
-            fetch_with_limit(name)
-            for name in product_names
-        ]
-
+        tasks = [fetch_with_limit(name) for name in product_names]
         all_candidates = await asyncio.gather(*tasks)
         logger.info(f"All candidates 11: {all_candidates}")
 
